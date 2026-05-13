@@ -1,0 +1,59 @@
+# Render deployment configuration
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: riphah-international-college
+    runtime: node
+    plan: starter          # upgrade to 'standard' for production traffic
+    region: oregon         # or: frankfurt, singapore, ohio, virginia
+    buildCommand: npm install --legacy-peer-deps && npx prisma generate && npx prisma migrate deploy && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    autoDeploy: true       # auto-deploy on git push
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # ── Database (Supabase PostgreSQL) ──────────────────────────────────────
+      # Connection pooler URL — used at runtime (port 6543, pgbouncer=true)
+      - key: DATABASE_URL
+        sync: false
+      # Direct URL — used by Prisma migrate deploy (port 5432, no pooler)
+      - key: DIRECT_URL
+        sync: false
+
+      # ── NextAuth ─────────────────────────────────────────────────────────────
+      # Generate: openssl rand -base64 32
+      - key: AUTH_SECRET
+        sync: false
+      # Your deployed domain, e.g. https://riphah-college.onrender.com
+      - key: AUTH_URL
+        sync: false
+
+      # ── Supabase Storage ─────────────────────────────────────────────────────
+      - key: SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+
+      # ── AI (optional) ────────────────────────────────────────────────────────
+      - key: GEMINI_API_KEY
+        sync: false
+
+      # ── SMTP (OTP email) ─────────────────────────────────────────────────────
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false

@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+Allow: /admissions
+Allow: /contact
+Allow: /events
+Allow: /faculty
+Allow: /fee-structure
+Allow: /programs
+
+# Block admin and internal routes
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /login
+Disallow: /api/
+
+# Sitemap
+Sitemap: https://YOUR-DOMAIN.com/sitemap.xml
