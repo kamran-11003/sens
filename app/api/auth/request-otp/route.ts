@@ -7,7 +7,7 @@ const limiter = rateLimit({ max: 3, windowMs: 10 * 60 * 1000 })
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown"
-  const { allowed, retryAfter } = limiter.check(ip)
+  const { allowed, retryAfter } = limiter(ip)
   if (!allowed) {
     return NextResponse.json(
       { error: `Too many requests. Try again in ${retryAfter} seconds.` },
