@@ -74,7 +74,7 @@ export async function POST(req: Request) {
     // ── path A: Gemini available ──────────────────────────────────────────
     if (GEMINI_API_KEY) {
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" })
 
       const context = topDocs.length > 0
         ? topDocs.map(x => `[${x.doc.title}]\n${x.doc.content}`).join("\n\n---\n\n")
