@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { GoogleGenerativeAI } from "@google/generative-ai"
 
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -71,7 +72,39 @@ export async function POST(req: Request) {
       .sort((a, b) => b.score - a.score)
       .slice(0, 3)
 
-    // ── path A: Gemini available ──────────────────────────────────────────
+    // ── path A: OpenAI available (preferred) ───────────────────────────────
+    if (OPENAI_API_KEY) {
+      const context = topDocs.length > 0
+        ? topDocs.map(x => `[${x.doc.title}]\n${x.doc.content}`).join("\n\n---\n\n")
+        : rules.map(r => r.rule).join("\n")
+
+      const systemPrompt = `You are a helpful admissions assistant for Riphah International College, Lahore, Pakistan. Answer ONLY based on the provided context. Be concise (2-4 sentences). Use a friendly, professional tone. If the context doesn't have an answer, say you'll direct them to the admissions office.`
+
+      const messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Context:\n${context}\n\nUser question: ${message}` }
+      ]
+
+      const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({ model: 'gpt-4o-mini', messages, max_tokens: 500, temperature: 0.2 }),
+      })
+
+      if (!resp.ok) {
+        console.error('OpenAI error', await resp.text())
+      } else {
+        const data = await resp.json()
+        const text = data?.choices?.[0]?.message?.content ?? ''
+        const reply = appendPageLinks(String(text).trim(), lower)
+        return NextResponse.json({ reply })
+      }
+    }
+
+    // ── path B: Gemini available (fallback) ───────────────────────────────
     if (GEMINI_API_KEY) {
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
       const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" })
