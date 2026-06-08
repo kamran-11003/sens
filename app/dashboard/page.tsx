@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect, useCallback } from "react"
 import { useSession } from "next-auth/react"
@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import {
   LayoutDashboard, BookOpen, FileText, Users, Calendar, MessageSquare,
   Plus, Pencil, Trash2, Download, X, Check, Loader2, LogOut, Bot, GraduationCap, Tag, Menu,
+  Award,
 } from "lucide-react"
 import { signOut } from "next-auth/react"
 
@@ -44,12 +45,18 @@ interface TeachingApplication {
 interface ProgramCategory {
   id: string; slug: string; label: string; active: boolean
 }
+interface ScholarshipApplication {
+  id: string; scholarshipName: string; name: string; dob: string; gender: string; fatherName: string; cnic: string
+  lastInstitution: string; grade: string; percentage: string; phone: string; email: string; address: string
+  documentUrl: string; documentType: string; status: string; createdAt: string
+}
 
 const TABS = [
   { id: "overview",     label: "Overview",     icon: LayoutDashboard },
   { id: "programs",     label: "Programs",     icon: BookOpen },
   { id: "categories",  label: "Categories",   icon: Tag },
   { id: "applications", label: "Applications", icon: FileText },
+  { id: "scholarships", label: "Scholarships", icon: Award },
   { id: "faculty",      label: "Faculty",      icon: Users },
   { id: "events",       label: "Events",       icon: Calendar },
   { id: "contact",      label: "Contact",      icon: MessageSquare },
@@ -111,23 +118,24 @@ const inputCls = "w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
-function OverviewTab({ programs, applications, faculty, events, contacts }: {
+function OverviewTab({ programs, applications, faculty, events, contacts, scholarships }: {
   programs: Program[]; applications: Application[]; faculty: Faculty[]
-  events: Event[]; contacts: Contact[]
+  events: Event[]; contacts: Contact[]; scholarships: ScholarshipApplication[]
 }) {
   const stats = [
     { label: "Programs",     value: programs.length,     color: "#1E3A8A" },
     { label: "Applications", value: applications.length, color: "#10B981" },
+    { label: "Scholarships", value: scholarships.length, color: "#EF4444" },
     { label: "Faculty",      value: faculty.length,      color: "#7C3AED" },
     { label: "Events",       value: events.length,       color: "#F59E0B" },
-    { label: "Contacts",     value: contacts.length,     color: "#EF4444" },
+    { label: "Contacts",     value: contacts.length,     color: "#64748B" },
   ]
   return (
     <div>
       <h2 className="text-2xl font-bold text-[#0a1128] mb-6">Dashboard Overview</h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {stats.map(s => (
-          <div key={s.label} className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+          <div key={s.label} className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 md:p-6">
             <p className="text-sm text-slate-500 mb-1">{s.label}</p>
             <p className="text-3xl font-bold" style={{ color: s.color }}>{s.value}</p>
           </div>
@@ -136,7 +144,7 @@ function OverviewTab({ programs, applications, faculty, events, contacts }: {
       <div className="mt-8 bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
         <h3 className="font-semibold text-[#0a1128] mb-4">Recent Applications</h3>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[500px]">
             <thead><tr className="border-b border-slate-100">{["Name","Email","Status","Date"].map(h => <th key={h} className="text-left py-2 px-3 text-slate-500 font-medium">{h}</th>)}</tr></thead>
             <tbody>
               {applications.slice(0, 5).map(a => (
@@ -200,8 +208,8 @@ function ProgramsTab() {
         </button>
       </div>
       {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-[#1E3A8A]" /></div> : (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden overflow-x-auto">
+          <table className="w-full text-sm min-w-[650px]">
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>{["Title","Category","Duration","Active",""].map(h => <th key={h} className="text-left py-3 px-4 text-slate-500 font-medium">{h}</th>)}</tr>
             </thead>
@@ -360,8 +368,8 @@ function FacultyTab() {
         </button>
       </div>
       {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-[#7C3AED]" /></div> : (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden overflow-x-auto">
+          <table className="w-full text-sm min-w-[650px]">
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>{["Name","Title","Department","Director","Order",""].map(h => <th key={h} className="text-left py-3 px-4 text-slate-500 font-medium">{h}</th>)}</tr>
             </thead>
@@ -393,7 +401,7 @@ function FacultyTab() {
             <Field label="Department"><input className={inputCls} value={form.department ?? ""} onChange={e => setForm(f => ({ ...f, department: e.target.value }))} /></Field>
             <Field label="Bio"><textarea className={`${inputCls} min-h-[80px]`} value={form.bio ?? ""} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} /></Field>
             <Field label="Specializations (comma-separated)"><input className={inputCls} value={Array.isArray(form.specializations) ? form.specializations.join(", ") : (form.specializations ?? "")} onChange={e => setForm(f => ({ ...f, specializations: e.target.value as any }))} /></Field>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Field label="Publications"><input type="number" className={inputCls} value={form.publications ?? ""} onChange={e => setForm(f => ({ ...f, publications: Number(e.target.value) || null }))} /></Field>
               <Field label="Awards"><input type="number" className={inputCls} value={form.awards ?? ""} onChange={e => setForm(f => ({ ...f, awards: Number(e.target.value) || null }))} /></Field>
               <Field label="Students"><input type="number" className={inputCls} value={form.students ?? ""} onChange={e => setForm(f => ({ ...f, students: Number(e.target.value) || null }))} /></Field>
@@ -458,8 +466,8 @@ function EventsTab() {
         </button>
       </div>
       {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-[#F59E0B]" /></div> : (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden overflow-x-auto">
+          <table className="w-full text-sm min-w-[650px]">
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>{["Title","Type","Date","Active",""].map(h => <th key={h} className="text-left py-3 px-4 text-slate-500 font-medium">{h}</th>)}</tr>
             </thead>
@@ -492,7 +500,7 @@ function EventsTab() {
                 {EVENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </Field>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="Date"><input type="date" className={inputCls} value={form.date ? form.date.split("T")[0] : ""} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></Field>
               <Field label="Time"><input type="time" className={inputCls} value={form.time ?? ""} onChange={e => setForm(f => ({ ...f, time: e.target.value }))} /></Field>
             </div>
@@ -784,8 +792,8 @@ function BotTab() {
               <p>No documents yet. Add knowledge base content for the bot.</p>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-              <table className="w-full text-sm">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden overflow-x-auto">
+              <table className="w-full text-sm min-w-[600px]">
                 <thead className="bg-slate-50 border-b border-slate-100">
                   <tr>{["Title","Category","File","Active",""].map(h => <th key={h} className="text-left py-3 px-4 text-slate-500 font-medium">{h}</th>)}</tr>
                 </thead>
@@ -848,8 +856,8 @@ function BotTab() {
               <p>No rules yet. Add behavior rules for the bot.</p>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-              <table className="w-full text-sm">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden overflow-x-auto">
+              <table className="w-full text-sm min-w-[600px]">
                 <thead className="bg-slate-50 border-b border-slate-100">
                   <tr>{["Title","Rule","Priority","Active",""].map(h => <th key={h} className="text-left py-3 px-4 text-slate-500 font-medium">{h}</th>)}</tr>
                 </thead>
@@ -942,8 +950,8 @@ function CategoriesTab() {
       </div>
       <p className="text-slate-500 text-sm mb-6">Categories are used to organise programs. The <strong>slug</strong> is the URL-safe key used in the database; the <strong>label</strong> is what's shown to users.</p>
       {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-[#1E3A8A]" /></div> : (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden overflow-x-auto">
+          <table className="w-full text-sm min-w-[500px]">
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>{["Slug","Label","Active",""].map(h => <th key={h} className="text-left py-3 px-4 text-slate-500 font-medium">{h}</th>)}</tr>
             </thead>
@@ -991,6 +999,197 @@ function CategoriesTab() {
   )
 }
 
+function ScholarshipsTab() {
+  const [apps, setApps] = useState<ScholarshipApplication[]>([])
+  const [loading, setLoading] = useState(true)
+  const [viewApp, setViewApp] = useState<ScholarshipApplication | null>(null)
+  
+  const STATUSES = ["PENDING", "REVIEWED", "ACCEPTED", "REJECTED"]
+  
+  const load = useCallback(() => {
+    setLoading(true)
+    fetch("/api/scholarship-applications")
+      .then(r => r.json())
+      .then(d => {
+        setApps(Array.isArray(d) ? d : [])
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  const updateStatus = async (id: string, status: string) => {
+    await fetch(`/api/scholarship-applications/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    })
+    load()
+  }
+
+  const del = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this scholarship application?")) return
+    await fetch(`/api/scholarship-applications/${id}`, {
+      method: "DELETE",
+    })
+    load()
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-[#0a1128]">Scholarship Applications</h2>
+        <a 
+          href="/api/scholarship-applications/export" 
+          target="_blank" 
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#10B981] text-white text-sm font-semibold hover:bg-[#10B981]/90 transition-colors"
+        >
+          <Download className="w-4 h-4" /> Export CSV
+        </a>
+      </div>
+      {loading ? (
+        <div className="flex justify-center py-10">
+          <Loader2 className="w-6 h-6 animate-spin text-[#1E3A8A]" />
+        </div>
+      ) : apps.length === 0 ? (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-12 text-center text-slate-400">
+          <Award className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p>No scholarship applications yet.</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden overflow-x-auto">
+          <table className="w-full text-sm min-w-[900px]">
+            <thead className="bg-slate-50 border-b border-slate-100">
+              <tr>
+                {["Student Name", "Scholarship", "Email", "Phone", "Grade", "Percentage", "Doc Type", "Status", "Date", ""].map(h => (
+                  <th key={h} className="text-left py-3 px-4 text-slate-500 font-medium">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {apps.map(a => (
+                <tr key={a.id} className="border-b border-slate-50 hover:bg-slate-50">
+                  <td className="py-3 px-4 font-medium text-[#0a1128]">{a.name}</td>
+                  <td className="py-3 px-4 text-slate-600 font-medium">{a.scholarshipName}</td>
+                  <td className="py-3 px-4 text-slate-500">{a.email}</td>
+                  <td className="py-3 px-4 text-slate-500">{a.phone}</td>
+                  <td className="py-3 px-4 text-slate-500">{a.grade}</td>
+                  <td className="py-3 px-4 text-slate-500">{a.percentage}</td>
+                  <td className="py-3 px-4 text-slate-500 capitalize">{a.documentType}</td>
+                  <td className="py-3 px-4">
+                    <select 
+                      value={a.status} 
+                      onChange={e => updateStatus(a.id, e.target.value)} 
+                      className="px-2 py-1 rounded-lg border border-slate-200 text-xs bg-white cursor-pointer"
+                    >
+                      {STATUSES.map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="py-3 px-4 text-slate-500">{new Date(a.createdAt).toLocaleDateString()}</td>
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => setViewApp(a)} 
+                        className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-[#0a1128] text-xs font-semibold cursor-pointer"
+                      >
+                        View
+                      </button>
+                      <button 
+                        onClick={() => del(a.id)} 
+                        className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {viewApp && (
+        <Modal title="Scholarship Application Details" onClose={() => setViewApp(null)}>
+          <div className="space-y-4 text-sm max-h-[70vh] overflow-y-auto pr-2">
+            <div className="bg-slate-50 p-4 rounded-xl space-y-2 border border-slate-100">
+              <div><span className="font-semibold text-slate-500 text-xs uppercase block">Applied Scholarship</span> <span className="font-bold text-[#0a1128] text-base">{viewApp.scholarshipName}</span></div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div><span className="font-semibold text-slate-500 text-xs uppercase block">Student Name</span> <span className="text-[#0a1128] font-medium">{viewApp.name}</span></div>
+              <div><span className="font-semibold text-slate-500 text-xs uppercase block">Father's Name</span> <span className="text-[#0a1128] font-medium">{viewApp.fatherName}</span></div>
+              <div><span className="font-semibold text-slate-500 text-xs uppercase block">Date of Birth</span> <span className="text-[#0a1128]">{viewApp.dob}</span></div>
+              <div><span className="font-semibold text-slate-500 text-xs uppercase block">Gender</span> <span className="text-[#0a1128] capitalize">{viewApp.gender}</span></div>
+              <div className="col-span-2"><span className="font-semibold text-slate-500 text-xs uppercase block">CNIC / B-Form</span> <span className="text-[#0a1128] font-mono">{viewApp.cnic}</span></div>
+            </div>
+
+            <hr className="border-slate-100" />
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2"><span className="font-semibold text-slate-500 text-xs uppercase block">Last Attended Institution</span> <span className="text-[#0a1128] font-medium">{viewApp.lastInstitution}</span></div>
+              <div><span className="font-semibold text-slate-500 text-xs uppercase block">Last Grade / Exam</span> <span className="text-[#0a1128]">{viewApp.grade}</span></div>
+              <div><span className="font-semibold text-slate-500 text-xs uppercase block">GPA / Percentage</span> <span className="text-[#0a1128]">{viewApp.percentage}</span></div>
+            </div>
+
+            <hr className="border-slate-100" />
+
+            <div className="space-y-3">
+              <div><span className="font-semibold text-slate-500 text-xs uppercase block">Guardian Phone</span> <span className="text-[#0a1128]">{viewApp.phone}</span></div>
+              <div><span className="font-semibold text-slate-500 text-xs uppercase block">Guardian Email</span> <span className="text-[#0a1128]">{viewApp.email}</span></div>
+              <div><span className="font-semibold text-slate-500 text-xs uppercase block">Residential Address</span> <p className="text-slate-600 mt-0.5 bg-slate-50 rounded-lg p-2.5 text-xs whitespace-pre-wrap">{viewApp.address}</p></div>
+            </div>
+
+            <hr className="border-slate-100" />
+
+            <div className="bg-blue-50 p-4 rounded-xl flex items-center justify-between">
+              <div>
+                <span className="font-semibold text-[#1E3A8A] text-xs uppercase block">Uploaded Document</span>
+                <span className="text-xs text-slate-500 capitalize">{viewApp.documentType} Document</span>
+              </div>
+              {viewApp.documentUrl ? (
+                <a 
+                  href={viewApp.documentUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 rounded-lg bg-[#1E3A8A] hover:bg-[#1E3A8A]/90 text-white text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" /> View File
+                </a>
+              ) : (
+                <span className="text-xs text-slate-400">No document attached</span>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between pt-2">
+              <div>
+                <span className="font-semibold text-slate-500 text-xs uppercase block">Status</span>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold inline-block mt-1 ${
+                  viewApp.status === "ACCEPTED" ? "bg-green-100 text-green-700" :
+                  viewApp.status === "REJECTED" ? "bg-red-100 text-red-700" :
+                  viewApp.status === "REVIEWED" ? "bg-blue-100 text-blue-700" :
+                  "bg-yellow-100 text-yellow-700"
+                }`}>
+                  {viewApp.status}
+                </span>
+              </div>
+              <div>
+                <span className="font-semibold text-slate-500 text-xs uppercase block">Submission Date</span>
+                <span className="text-slate-600 text-xs mt-1 inline-block">{new Date(viewApp.createdAt).toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  )
+}
+
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
 export default function AdminDashboard() {
@@ -1001,7 +1200,7 @@ export default function AdminDashboard() {
   const [allData, setAllData] = useState({
     programs: [] as Program[], applications: [] as Application[],
     faculty: [] as Faculty[], events: [] as Event[],
-    contacts: [] as Contact[],
+    contacts: [] as Contact[], scholarships: [] as ScholarshipApplication[],
   })
 
   useEffect(() => {
@@ -1016,13 +1215,15 @@ export default function AdminDashboard() {
       fetch("/api/faculty").then(r => r.json()),
       fetch("/api/events").then(r => r.json()),
       fetch("/api/contact").then(r => r.json()),
-    ]).then(([programs, applications, faculty, events, contacts]) => {
+      fetch("/api/scholarship-applications").then(r => r.json()),
+    ]).then(([programs, applications, faculty, events, contacts, scholarships]) => {
       setAllData({
         programs:     Array.isArray(programs)     ? programs     : [],
         applications: Array.isArray(applications) ? applications : [],
         faculty:      Array.isArray(faculty)      ? faculty      : [],
         events:       Array.isArray(events)       ? events       : [],
         contacts:     Array.isArray(contacts)     ? contacts     : [],
+        scholarships: Array.isArray(scholarships) ? scholarships : [],
       })
     }).catch(() => {})
   }, [status])
@@ -1093,6 +1294,7 @@ export default function AdminDashboard() {
           {activeTab === "programs"     && <ProgramsTab />}
           {activeTab === "categories"   && <CategoriesTab />}
           {activeTab === "applications" && <ApplicationsTab />}
+          {activeTab === "scholarships" && <ScholarshipsTab />}
           {activeTab === "faculty"      && <FacultyTab />}
           {activeTab === "events"       && <EventsTab />}
           {activeTab === "contact"      && <ContactTab />}

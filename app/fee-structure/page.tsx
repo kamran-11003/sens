@@ -3,7 +3,6 @@
 import { Navigation } from "@/components/navigation"
 import { HeroSection } from "@/components/sections/hero-section"
 import { ScholarshipsSection } from "@/components/sections/scholarships-section"
-import { FeeCalculatorSection } from "@/components/sections/fee-calculator-section"
 import { Footer } from "@/components/footer"
 
 export default function FeeStructurePage() {
@@ -22,9 +21,6 @@ export default function FeeStructurePage() {
       <div className="space-y-0">
         {/* Scholarships Section */}
         <ScholarshipsSection />
-        
-        {/* Fee Calculator Section */}
-        <FeeCalculatorSection />
       </div>
       
       {/* Footer */}
@@ -32,3 +28,4 @@ export default function FeeStructurePage() {
     </main>
   )
 }
+

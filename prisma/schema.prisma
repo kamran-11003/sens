@@ -212,3 +212,25 @@ model TeachingApplication {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
+
+model ScholarshipApplication {
+  id              String            @id @default(cuid())
+  scholarshipName String
+  name            String
+  dob             String
+  gender          String
+  fatherName      String
+  cnic            String
+  lastInstitution String
+  grade           String
+  percentage      String
+  phone           String
+  email           String
+  address         String
+  documentUrl     String            @default("")
+  documentType    String            // e.g. result, sports, other
+  status          ApplicationStatus @default(PENDING)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+}
+

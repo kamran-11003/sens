@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { Eye, EyeOff, ShieldCheck } from "lucide-react"
@@ -16,6 +16,20 @@ export default function AdminLoginPage() {
   const [authError, setAuthError] = useState("")
   const [authSuccess, setAuthSuccess] = useState(false)
   const [formVisible, setFormVisible] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768
+      setIsMobile(mobile)
+      if (mobile) {
+        setFormVisible(true)
+      }
+    }
+    checkMobile()
+    window.addEventListener("resize", checkMobile)
+    return () => window.removeEventListener("resize", checkMobile)
+  }, [])
 
   const handleDrawComplete = useCallback(() => {
     setFormVisible(true)
@@ -48,18 +62,18 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-[#0a1128] font-(--font-inter)">
+    <div className="relative min-h-screen bg-[#0a1128] font-(--font-inter) overflow-y-auto flex items-center justify-center md:justify-end p-4 md:p-8">
       {/* Ambient Glow */}
-      <div className="absolute -top-50 -right-25 w-150 h-150 rounded-full opacity-40 blur-[100px] bg-[radial-gradient(circle,#f5b041_0%,transparent_70%)]" />
-      <div className="absolute -bottom-75 -left-50 w-200 h-200 rounded-full opacity-40 blur-[100px] bg-[radial-gradient(circle,#2e4a8f_0%,transparent_70%)]" />
+      <div className="absolute -top-50 -right-25 w-150 h-150 rounded-full opacity-40 blur-[100px] bg-[radial-gradient(circle,#f5b041_0%,transparent_70%)] pointer-events-none" />
+      <div className="absolute -bottom-75 -left-50 w-200 h-200 rounded-full opacity-40 blur-[100px] bg-[radial-gradient(circle,#2e4a8f_0%,transparent_70%)] pointer-events-none" />
 
       {/* Canvas Animation */}
-      <AuthCanvas formHeight={400} onDrawComplete={handleDrawComplete} />
+      {!isMobile && <AuthCanvas formHeight={400} onDrawComplete={handleDrawComplete} />}
 
       {/* Auth Form */}
       <motion.div
-        className="absolute bottom-4 right-4 w-full max-w-115 z-20"
-        initial={{ opacity: 0, y: 20 }}
+        className="relative md:absolute md:bottom-4 md:right-4 w-full max-w-md z-20"
+        initial={{ opacity: isMobile ? 1 : 0, y: isMobile ? 0 : 20 }}
         animate={formVisible ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
         transition={{
           duration: 0.8,
@@ -67,6 +81,7 @@ export default function AdminLoginPage() {
         }}
         style={{ pointerEvents: formVisible ? "auto" : "none" }}
       >
+
         <div className="backdrop-blur-2xl bg-[rgba(21,34,67,0.65)] border border-[rgba(245,176,65,0.3)] rounded-[20px] p-10 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.1)]">
           {/* Header */}
           <div className="text-center mb-8">
