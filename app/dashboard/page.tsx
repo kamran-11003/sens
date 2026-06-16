@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation"
 import {
   LayoutDashboard, BookOpen, FileText, Users, Calendar, MessageSquare,
   Plus, Pencil, Trash2, Download, X, Check, Loader2, LogOut, Bot, GraduationCap, Tag, Menu,
-  Award, Settings,
+  Award, Settings, ClipboardList, Key, Eye, EyeOff, Send, Square, CheckSquare,
+  Paperclip, Image, Video, Link2,
 } from "lucide-react"
 import { signOut } from "next-auth/react"
 
@@ -49,6 +50,20 @@ interface ScholarshipApplication {
   id: string; scholarshipName: string; firstName: string; lastName: string
   phone: string; documentUrl: string; documentType: string; status: string; createdAt: string
 }
+interface Teacher {
+  id: string; name: string | null; email: string; createdAt: string
+  facultyProfile: { id: string; name: string; title: string; department: string; image: string } | null
+}
+interface AdminTask {
+  id: string; title: string; description: string; deadline: string | null
+  priority: string; status: string; createdAt: string
+  teacher: { id: string; name: string | null; email: string }
+  subtasks: { id: string; title: string; done: boolean }[]
+  documents: { id: string; name: string; url: string }[]
+  messages: { id: string; message: string; from: string; createdAt: string; user: { name: string | null; role: string } }[]
+  submissions: { id: string; name: string; url: string; fileType: string; createdAt: string }[]
+  _count?: { messages: number; submissions: number }
+}
 
 const TABS = [
   { id: "overview",     label: "Overview",     icon: LayoutDashboard },
@@ -57,6 +72,7 @@ const TABS = [
   { id: "applications", label: "Applications", icon: FileText },
   { id: "scholarships", label: "Scholarships", icon: Award },
   { id: "faculty",      label: "Faculty",      icon: Users },
+  { id: "tasks",        label: "LMS Tasks",    icon: ClipboardList },
   { id: "events",       label: "Events",       icon: Calendar },
   { id: "contact",      label: "Contact",      icon: MessageSquare },
   { id: "teaching",     label: "Teaching Jobs", icon: GraduationCap },
@@ -315,6 +331,9 @@ function ApplicationsTab() {
 }
 
 function FacultyTab() {
+  const [subTab, setSubTab] = useState<"members" | "teachers">("members")
+
+  // ── Faculty Members ──────────────────────────────────────────────────────────
   const [faculty, setFaculty] = useState<Faculty[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<"add" | "edit" | null>(null)
@@ -359,40 +378,159 @@ function FacultyTab() {
     await fetch(`/api/faculty/${id}`, { method: "DELETE" }); load()
   }
 
+  // ── Teacher Accounts ─────────────────────────────────────────────────────────
+  const [teachers, setTeachers] = useState<Teacher[]>([])
+  const [tLoading, setTLoading] = useState(true)
+  const [tModal, setTModal] = useState<"add" | "edit" | null>(null)
+  const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null)
+  const [tForm, setTForm] = useState({ name: "", email: "", password: "", facultyMemberId: "" })
+  const [tSaving, setTSaving] = useState(false)
+  const [showPwd, setShowPwd] = useState(false)
+
+  const loadTeachers = useCallback(() => {
+    setTLoading(true)
+    fetch("/api/teachers").then(r => r.json()).then(d => { setTeachers(Array.isArray(d) ? d : []); setTLoading(false) }).catch(() => setTLoading(false))
+  }, [])
+
+  useEffect(() => { loadTeachers() }, [loadTeachers])
+
+  const openAddTeacher = () => { setTForm({ name: "", email: "", password: "", facultyMemberId: "" }); setTModal("add") }
+  const openEditTeacher = (t: Teacher) => {
+    setEditingTeacher(t)
+    setTForm({ name: t.name ?? "", email: t.email, password: "", facultyMemberId: t.facultyProfile?.id ?? "" })
+    setTModal("edit")
+  }
+  const closeTModal = () => { setTModal(null); setEditingTeacher(null); setShowPwd(false) }
+
+  const saveTeacher = async () => {
+    setTSaving(true)
+    if (tModal === "add") {
+      const body: Record<string, string> = { name: tForm.name, email: tForm.email, password: tForm.password }
+      if (tForm.facultyMemberId) body.facultyMemberId = tForm.facultyMemberId
+      await fetch("/api/teachers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+    } else if (editingTeacher) {
+      const body: Record<string, string> = {}
+      if (tForm.name) body.name = tForm.name
+      if (tForm.email) body.email = tForm.email
+      if (tForm.password) body.password = tForm.password
+      await fetch(`/api/teachers/${editingTeacher.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+    }
+    setTSaving(false); closeTModal(); loadTeachers()
+  }
+
+  const delTeacher = async (id: string) => {
+    if (!confirm("Delete this teacher account? They will lose portal access.")) return
+    await fetch(`/api/teachers/${id}`, { method: "DELETE" }); loadTeachers()
+  }
+
+  const unlinkedFaculty = faculty.filter(f => !teachers.some(t => t.facultyProfile?.id === f.id))
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-[#0a1128]">Faculty</h2>
-        <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#7C3AED] text-white text-sm font-semibold hover:bg-[#7C3AED]/90 transition-colors">
-          <Plus className="w-4 h-4" /> Add Member
-        </button>
-      </div>
-      {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-[#7C3AED]" /></div> : (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden overflow-x-auto">
-          <table className="w-full text-sm min-w-[650px]">
-            <thead className="bg-slate-50 border-b border-slate-100">
-              <tr>{["Name","Title","Department","Director","Order",""].map(h => <th key={h} className="text-left py-3 px-4 text-slate-500 font-medium">{h}</th>)}</tr>
-            </thead>
-            <tbody>
-              {faculty.map(m => (
-                <tr key={m.id} className="border-b border-slate-50 hover:bg-slate-50">
-                  <td className="py-3 px-4 font-medium text-[#0a1128]">{m.name}</td>
-                  <td className="py-3 px-4 text-slate-500">{m.title}</td>
-                  <td className="py-3 px-4 text-slate-500">{m.department}</td>
-                  <td className="py-3 px-4">{m.isDirector ? <Check className="w-4 h-4 text-green-600" /> : "—"}</td>
-                  <td className="py-3 px-4 text-slate-500">{m.displayOrder}</td>
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => openEdit(m)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"><Pencil className="w-4 h-4" /></button>
-                      <button onClick={() => del(m.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-xl border border-slate-200 overflow-hidden text-sm">
+            <button onClick={() => setSubTab("members")} className={`px-3 py-2 font-medium transition-colors ${subTab === "members" ? "bg-[#7C3AED] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
+              Faculty Members
+            </button>
+            <button onClick={() => setSubTab("teachers")} className={`px-3 py-2 font-medium transition-colors ${subTab === "teachers" ? "bg-[#7C3AED] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
+              Teacher Logins
+            </button>
+          </div>
+          {subTab === "members" && (
+            <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#7C3AED] text-white text-sm font-semibold hover:bg-[#7C3AED]/90 transition-colors">
+              <Plus className="w-4 h-4" /> Add Member
+            </button>
+          )}
+          {subTab === "teachers" && (
+            <button onClick={openAddTeacher} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#7C3AED] text-white text-sm font-semibold hover:bg-[#7C3AED]/90 transition-colors">
+              <Key className="w-4 h-4" /> Add Teacher Login
+            </button>
+          )}
         </div>
+      </div>
+
+      {subTab === "members" && (
+        loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-[#7C3AED]" /></div> : (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden overflow-x-auto">
+            <table className="w-full text-sm min-w-[650px]">
+              <thead className="bg-slate-50 border-b border-slate-100">
+                <tr>{["Name","Title","Department","Director","Order","Portal",""].map(h => <th key={h} className="text-left py-3 px-4 text-slate-500 font-medium">{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {faculty.map(m => {
+                  const hasLogin = teachers.some(t => t.facultyProfile?.id === m.id)
+                  return (
+                    <tr key={m.id} className="border-b border-slate-50 hover:bg-slate-50">
+                      <td className="py-3 px-4 font-medium text-[#0a1128]">{m.name}</td>
+                      <td className="py-3 px-4 text-slate-500">{m.title}</td>
+                      <td className="py-3 px-4 text-slate-500">{m.department}</td>
+                      <td className="py-3 px-4">{m.isDirector ? <Check className="w-4 h-4 text-green-600" /> : "—"}</td>
+                      <td className="py-3 px-4 text-slate-500">{m.displayOrder}</td>
+                      <td className="py-3 px-4">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${hasLogin ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-400"}`}>
+                          {hasLogin ? "Active" : "None"}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => openEdit(m)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"><Pencil className="w-4 h-4" /></button>
+                          <button onClick={() => del(m.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )
       )}
+
+      {subTab === "teachers" && (
+        tLoading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-[#7C3AED]" /></div>
+        : teachers.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center text-slate-400">
+            <Key className="w-10 h-10 mx-auto mb-3 opacity-30" />
+            <p>No teacher accounts yet. Add one to grant portal access.</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden overflow-x-auto">
+            <table className="w-full text-sm min-w-[600px]">
+              <thead className="bg-slate-50 border-b border-slate-100">
+                <tr>{["Name","Email","Linked Faculty","Created",""].map(h => <th key={h} className="text-left py-3 px-4 text-slate-500 font-medium">{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {teachers.map(t => (
+                  <tr key={t.id} className="border-b border-slate-50 hover:bg-slate-50">
+                    <td className="py-3 px-4 font-medium text-[#0a1128]">{t.name ?? "—"}</td>
+                    <td className="py-3 px-4 text-slate-500">{t.email}</td>
+                    <td className="py-3 px-4">
+                      {t.facultyProfile ? (
+                        <span className="flex items-center gap-1.5 text-green-700">
+                          <Link2 className="w-3.5 h-3.5" /> {t.facultyProfile.name}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 text-xs">Unlinked</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-slate-500">{new Date(t.createdAt).toLocaleDateString()}</td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => openEditTeacher(t)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"><Pencil className="w-4 h-4" /></button>
+                        <button onClick={() => delTeacher(t.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      )}
+
+      {/* Faculty member modal */}
       {modal && (
         <Modal title={modal === "add" ? "Add Faculty Member" : "Edit Faculty Member"} onClose={closeModal}>
           <div className="space-y-4">
@@ -418,6 +556,46 @@ function FacultyTab() {
             </div>
             <button onClick={save} disabled={saving} className="w-full py-3 rounded-xl bg-[#7C3AED] text-white font-semibold flex items-center justify-center gap-2 hover:bg-[#7C3AED]/90 transition-colors disabled:opacity-60">
               {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : "Save Member"}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Teacher login modal */}
+      {tModal && (
+        <Modal title={tModal === "add" ? "Add Teacher Account" : "Edit Teacher Credentials"} onClose={closeTModal}>
+          <div className="space-y-4">
+            <Field label="Full Name">
+              <input className={inputCls} value={tForm.name} onChange={e => setTForm(f => ({ ...f, name: e.target.value }))} placeholder="Teacher's name" />
+            </Field>
+            <Field label="Email (login)">
+              <input type="email" className={inputCls} value={tForm.email} onChange={e => setTForm(f => ({ ...f, email: e.target.value }))} placeholder="teacher@ric.edu.pk" />
+            </Field>
+            <Field label={tModal === "edit" ? "New Password (leave blank to keep)" : "Password *"}>
+              <div className="relative flex items-center">
+                <input
+                  type={showPwd ? "text" : "password"}
+                  className={`${inputCls} pr-10`}
+                  value={tForm.password}
+                  onChange={e => setTForm(f => ({ ...f, password: e.target.value }))}
+                  placeholder={tModal === "edit" ? "Leave blank to keep existing" : "Min 6 characters"}
+                />
+                <button type="button" onClick={() => setShowPwd(v => !v)} className="absolute right-3 text-slate-400 hover:text-slate-600">
+                  {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </Field>
+            {tModal === "add" && unlinkedFaculty.length > 0 && (
+              <Field label="Link to Faculty Member (optional)">
+                <select className={inputCls} value={tForm.facultyMemberId} onChange={e => setTForm(f => ({ ...f, facultyMemberId: e.target.value }))}>
+                  <option value="">— No link —</option>
+                  {unlinkedFaculty.map(f => <option key={f.id} value={f.id}>{f.name} ({f.department})</option>)}
+                </select>
+              </Field>
+            )}
+            <p className="text-xs text-slate-400">Share these credentials with the teacher so they can sign in at <strong>/teacher</strong>.</p>
+            <button onClick={saveTeacher} disabled={tSaving} className="w-full py-3 rounded-xl bg-[#7C3AED] text-white font-semibold flex items-center justify-center gap-2 hover:bg-[#7C3AED]/90 transition-colors disabled:opacity-60">
+              {tSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : tModal === "add" ? "Create Account" : "Update Credentials"}
             </button>
           </div>
         </Modal>
@@ -1059,6 +1237,390 @@ function ScholarshipsTab() {
   )
 }
 
+const TASK_PRIORITY_COLORS: Record<string, string> = {
+  HIGH: "bg-red-100 text-red-700",
+  MEDIUM: "bg-yellow-100 text-yellow-700",
+  LOW: "bg-green-100 text-green-700",
+}
+const TASK_STATUS_COLORS: Record<string, string> = {
+  PENDING: "bg-slate-100 text-slate-600",
+  IN_PROGRESS: "bg-blue-100 text-blue-700",
+  COMPLETED: "bg-green-100 text-green-700",
+  OVERDUE: "bg-red-100 text-red-700",
+}
+
+function TasksTab() {
+  const [tasks, setTasks] = useState<AdminTask[]>([])
+  const [teachers, setTeachers] = useState<Teacher[]>([])
+  const [loading, setLoading] = useState(true)
+  const [createModal, setCreateModal] = useState(false)
+  const [selectedTask, setSelectedTask] = useState<AdminTask | null>(null)
+  const [loadingDetail, setLoadingDetail] = useState(false)
+  const [detailPanel, setDetailPanel] = useState<"subtasks" | "messages" | "submissions">("subtasks")
+
+  // Create form state
+  const [form, setForm] = useState({ title: "", description: "", teacherId: "", deadline: "", priority: "MEDIUM" })
+  const [subtaskInputs, setSubtaskInputs] = useState<string[]>([""])
+  const [docFiles, setDocFiles] = useState<{ name: string; url: string }[]>([])
+  const [docUploading, setDocUploading] = useState(false)
+  const [creating, setCreating] = useState(false)
+
+  // Admin message reply
+  const [replyMsg, setReplyMsg] = useState("")
+  const [sendingReply, setSendingReply] = useState(false)
+
+  const load = useCallback(() => {
+    setLoading(true)
+    Promise.all([
+      fetch("/api/tasks").then(r => r.json()),
+      fetch("/api/teachers").then(r => r.json()),
+    ]).then(([t, teach]) => {
+      setTasks(Array.isArray(t) ? t : [])
+      setTeachers(Array.isArray(teach) ? teach : [])
+      setLoading(false)
+    }).catch(() => setLoading(false))
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const openDetail = async (taskId: string) => {
+    setLoadingDetail(true)
+    setSelectedTask(null)
+    setDetailPanel("subtasks")
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`)
+      setSelectedTask(await res.json())
+    } finally {
+      setLoadingDetail(false)
+    }
+  }
+
+  const closeDetail = () => { setSelectedTask(null); load() }
+
+  const handleDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setDocUploading(true)
+    const fd = new FormData()
+    fd.append("file", file)
+    const res = await fetch("/api/upload/task-doc", { method: "POST", body: fd })
+    const data = await res.json()
+    if (data.url) setDocFiles(prev => [...prev, { name: data.name ?? file.name, url: data.url }])
+    setDocUploading(false)
+    e.target.value = ""
+  }
+
+  const createTask = async () => {
+    if (!form.title || !form.teacherId) return
+    setCreating(true)
+    await fetch("/api/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...form,
+        subtasks: subtaskInputs.filter(Boolean),
+        documentUrls: docFiles,
+      }),
+    })
+    setCreating(false)
+    setCreateModal(false)
+    setForm({ title: "", description: "", teacherId: "", deadline: "", priority: "MEDIUM" })
+    setSubtaskInputs([""])
+    setDocFiles([])
+    load()
+  }
+
+  const delTask = async (id: string) => {
+    if (!confirm("Delete this task?")) return
+    await fetch(`/api/tasks/${id}`, { method: "DELETE" }); load()
+  }
+
+  const updateTaskStatus = async (taskId: string, status: string) => {
+    await fetch(`/api/tasks/${taskId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    })
+    load()
+  }
+
+  const sendReply = async () => {
+    if (!replyMsg.trim() || !selectedTask) return
+    setSendingReply(true)
+    const res = await fetch(`/api/tasks/${selectedTask.id}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: replyMsg }),
+    })
+    const msg = await res.json()
+    setSelectedTask(prev => prev ? { ...prev, messages: [...prev.messages, msg] } : null)
+    setReplyMsg("")
+    setSendingReply(false)
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-[#0a1128]">LMS Tasks</h2>
+        <button onClick={() => setCreateModal(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#7C3AED] text-white text-sm font-semibold hover:bg-[#7C3AED]/90 transition-colors">
+          <Plus className="w-4 h-4" /> Assign Task
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-[#7C3AED]" /></div>
+      ) : tasks.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center text-slate-400">
+          <ClipboardList className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p>No tasks yet. Assign one to a teacher.</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden overflow-x-auto">
+          <table className="w-full text-sm min-w-[750px]">
+            <thead className="bg-slate-50 border-b border-slate-100">
+              <tr>{["Title","Teacher","Deadline","Priority","Progress","Status",""].map(h => <th key={h} className="text-left py-3 px-4 text-slate-500 font-medium">{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {tasks.map(task => {
+                const doneCount = task.subtasks.filter(s => s.done).length
+                const total = task.subtasks.length
+                return (
+                  <tr key={task.id} className="border-b border-slate-50 hover:bg-slate-50">
+                    <td className="py-3 px-4 font-medium text-[#0a1128] max-w-[160px] truncate">{task.title}</td>
+                    <td className="py-3 px-4 text-slate-500">{task.teacher.name ?? task.teacher.email}</td>
+                    <td className="py-3 px-4 text-slate-500">
+                      {task.deadline ? new Date(task.deadline).toLocaleDateString() : "—"}
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${TASK_PRIORITY_COLORS[task.priority] ?? ""}`}>{task.priority}</span>
+                    </td>
+                    <td className="py-3 px-4">
+                      {total > 0 ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-[#7C3AED] rounded-full" style={{ width: `${Math.round((doneCount / total) * 100)}%` }} />
+                          </div>
+                          <span className="text-xs text-slate-400">{doneCount}/{total}</span>
+                        </div>
+                      ) : <span className="text-xs text-slate-300">—</span>}
+                    </td>
+                    <td className="py-3 px-4">
+                      <select
+                        value={task.status}
+                        onChange={e => updateTaskStatus(task.id, e.target.value)}
+                        className="px-2 py-1 rounded-lg border border-slate-200 text-xs bg-white"
+                      >
+                        {["PENDING","IN_PROGRESS","COMPLETED","OVERDUE"].map(s => <option key={s} value={s}>{s.replace("_"," ")}</option>)}
+                      </select>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => openDetail(task.id)} className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-[#0a1128]">View</button>
+                        <button onClick={() => delTask(task.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Create Task Modal */}
+      {createModal && (
+        <Modal title="Assign New Task" onClose={() => setCreateModal(false)}>
+          <div className="space-y-4">
+            <Field label="Title *"><input className={inputCls} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Task title" /></Field>
+            <Field label="Description"><textarea className={`${inputCls} min-h-[70px]`} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="What should the teacher do?" /></Field>
+            <Field label="Assign To *">
+              <select className={inputCls} value={form.teacherId} onChange={e => setForm(f => ({ ...f, teacherId: e.target.value }))}>
+                <option value="">Select teacher</option>
+                {teachers.map(t => <option key={t.id} value={t.id}>{t.name ?? t.email} {t.facultyProfile ? `(${t.facultyProfile.department})` : ""}</option>)}
+              </select>
+            </Field>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Deadline"><input type="date" className={inputCls} value={form.deadline} onChange={e => setForm(f => ({ ...f, deadline: e.target.value }))} /></Field>
+              <Field label="Priority">
+                <select className={inputCls} value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}>
+                  <option value="LOW">Low</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="HIGH">High</option>
+                </select>
+              </Field>
+            </div>
+            <Field label="Subtasks (checklist)">
+              <div className="space-y-2">
+                {subtaskInputs.map((v, i) => (
+                  <div key={i} className="flex gap-2">
+                    <input
+                      className={`${inputCls} flex-1`}
+                      value={v}
+                      placeholder={`Subtask ${i + 1}`}
+                      onChange={e => { const a = [...subtaskInputs]; a[i] = e.target.value; setSubtaskInputs(a) }}
+                    />
+                    {subtaskInputs.length > 1 && (
+                      <button type="button" onClick={() => setSubtaskInputs(a => a.filter((_, j) => j !== i))} className="p-2 text-red-400 hover:text-red-600">
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button type="button" onClick={() => setSubtaskInputs(a => [...a, ""])} className="text-xs text-[#7C3AED] hover:underline">
+                  + Add subtask
+                </button>
+              </div>
+            </Field>
+            <Field label="Reference Documents">
+              <input type="file" onChange={handleDocUpload} disabled={docUploading} className={inputCls} />
+              {docUploading && <p className="text-xs text-slate-400 mt-1 animate-pulse">Uploading…</p>}
+              {docFiles.map((d, i) => (
+                <div key={i} className="flex items-center gap-2 text-xs text-slate-600 mt-1">
+                  <Paperclip className="w-3 h-3" /> {d.name}
+                  <button onClick={() => setDocFiles(f => f.filter((_, j) => j !== i))} className="text-red-400"><X className="w-3 h-3" /></button>
+                </div>
+              ))}
+            </Field>
+            <button onClick={createTask} disabled={creating || !form.title || !form.teacherId} className="w-full py-3 rounded-xl bg-[#7C3AED] text-white font-semibold flex items-center justify-center gap-2 hover:bg-[#7C3AED]/90 transition-colors disabled:opacity-60">
+              {creating ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating…</> : "Assign Task"}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Task Detail Modal */}
+      {(loadingDetail || selectedTask) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeDetail} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+            {loadingDetail ? (
+              <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-[#7C3AED]" /></div>
+            ) : selectedTask ? (
+              <>
+                <div className="flex items-start justify-between p-5 border-b border-slate-100 shrink-0">
+                  <div className="flex-1 min-w-0 pr-4">
+                    <h2 className="font-bold text-[#0a1128] text-lg">{selectedTask.title}</h2>
+                    <div className="flex flex-wrap gap-2 mt-1.5">
+                      <span className="text-xs text-slate-400">Assigned to: <strong>{selectedTask.teacher.name ?? selectedTask.teacher.email}</strong></span>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${TASK_PRIORITY_COLORS[selectedTask.priority] ?? ""}`}>{selectedTask.priority}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${TASK_STATUS_COLORS[selectedTask.status] ?? ""}`}>{selectedTask.status.replace("_"," ")}</span>
+                    </div>
+                    {selectedTask.description && <p className="text-sm text-slate-500 mt-2">{selectedTask.description}</p>}
+                  </div>
+                  <button onClick={closeDetail} className="p-2 rounded-xl hover:bg-slate-100 transition-colors shrink-0"><X className="w-5 h-5 text-slate-400" /></button>
+                </div>
+
+                <div className="flex border-b border-slate-100 shrink-0">
+                  {(["subtasks", "messages", "submissions"] as const).map(panel => (
+                    <button key={panel} onClick={() => setDetailPanel(panel)} className={`flex-1 py-3 text-sm font-medium transition-colors capitalize ${detailPanel === panel ? "text-[#7C3AED] border-b-2 border-[#7C3AED]" : "text-slate-400 hover:text-slate-600"}`}>
+                      {panel === "subtasks" && `Checklist (${selectedTask.subtasks.filter(s => s.done).length}/${selectedTask.subtasks.length})`}
+                      {panel === "messages" && `Q&A (${selectedTask.messages.length})`}
+                      {panel === "submissions" && `Proof (${selectedTask.submissions.length})`}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex-1 overflow-y-auto">
+                  {detailPanel === "subtasks" && (
+                    <div className="p-5">
+                      {selectedTask.subtasks.length === 0 ? (
+                        <p className="text-slate-400 text-sm text-center py-8">No subtasks.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {selectedTask.subtasks.map(s => (
+                            <div key={s.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
+                              {s.done ? <CheckSquare className="w-5 h-5 text-[#7C3AED] shrink-0" /> : <Square className="w-5 h-5 text-slate-300 shrink-0" />}
+                              <span className={`text-sm ${s.done ? "line-through text-slate-400" : "text-[#0a1128]"}`}>{s.title}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {selectedTask.documents.length > 0 && (
+                        <div className="mt-6">
+                          <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Reference Documents</h4>
+                          <div className="space-y-2">
+                            {selectedTask.documents.map(doc => (
+                              <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 rounded-xl bg-blue-50 hover:bg-blue-100 transition-colors">
+                                <Paperclip className="w-4 h-4 text-[#1E3A8A] shrink-0" />
+                                <span className="text-sm text-[#1E3A8A] font-medium flex-1 truncate">{doc.name}</span>
+                                <Download className="w-4 h-4 text-[#1E3A8A] shrink-0" />
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {detailPanel === "messages" && (
+                    <div className="flex flex-col h-full">
+                      <div className="flex-1 p-5 space-y-3">
+                        {selectedTask.messages.length === 0 && <p className="text-slate-400 text-sm text-center py-8">No messages yet.</p>}
+                        {selectedTask.messages.map(msg => {
+                          const isAdmin = msg.from === "ADMIN"
+                          return (
+                            <div key={msg.id} className={`flex ${isAdmin ? "justify-end" : "justify-start"}`}>
+                              <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 ${isAdmin ? "bg-[#1E3A8A] text-white rounded-br-sm" : "bg-slate-100 text-[#0a1128] rounded-bl-sm"}`}>
+                                <p className="text-xs font-semibold mb-1 opacity-70">{isAdmin ? "You (Admin)" : msg.user.name ?? "Teacher"}</p>
+                                <p className="text-sm leading-relaxed">{msg.message}</p>
+                                <p className={`text-xs mt-1 ${isAdmin ? "opacity-60" : "text-slate-400"}`}>
+                                  {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                </p>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      <div className="p-4 border-t border-slate-100 shrink-0">
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={replyMsg}
+                            onChange={e => setReplyMsg(e.target.value)}
+                            onKeyDown={e => e.key === "Enter" && !e.shiftKey && sendReply()}
+                            placeholder="Reply to teacher…"
+                            className="flex-1 px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm text-[#0a1128] outline-none focus:border-[#1E3A8A] transition-colors"
+                          />
+                          <button onClick={sendReply} disabled={sendingReply || !replyMsg.trim()} className="p-2.5 rounded-xl bg-[#1E3A8A] text-white hover:bg-[#1E3A8A]/90 disabled:opacity-50 transition-colors">
+                            {sendingReply ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {detailPanel === "submissions" && (
+                    <div className="p-5">
+                      {selectedTask.submissions.length === 0 ? (
+                        <p className="text-slate-400 text-sm text-center py-8">No proof submitted yet.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {selectedTask.submissions.map(sub => (
+                            <a key={sub.id} href={sub.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors">
+                              <span className="text-[#7C3AED]">
+                                {sub.fileType === "image" ? <Image className="w-4 h-4" /> : sub.fileType === "video" ? <Video className="w-4 h-4" /> : <Paperclip className="w-4 h-4" />}
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-[#0a1128] truncate">{sub.name}</p>
+                                <p className="text-xs text-slate-400">{new Date(sub.createdAt).toLocaleDateString()}</p>
+                              </div>
+                              <Download className="w-4 h-4 text-slate-400 shrink-0" />
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : null}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SettingsTab() {
   const FORM_KEYS = [
     { key: "admission_form_enabled",   label: "Admission Form",           desc: "Allow students to submit admission applications" },
@@ -1238,6 +1800,7 @@ export default function AdminDashboard() {
           {activeTab === "applications" && <ApplicationsTab />}
           {activeTab === "scholarships" && <ScholarshipsTab />}
           {activeTab === "faculty"      && <FacultyTab />}
+          {activeTab === "tasks"        && <TasksTab />}
           {activeTab === "events"       && <EventsTab />}
           {activeTab === "contact"      && <ContactTab />}
           {activeTab === "teaching"     && <TeachingTab />}

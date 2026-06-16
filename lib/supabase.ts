@@ -9,4 +9,6 @@ export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 export const BUCKETS = {
   cv: "cv-uploads",
   faculty: "faculty-images",
+  taskDocs: "task-docs",
+  submissions: "task-submissions",
 } as const
