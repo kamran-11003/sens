@@ -1455,7 +1455,7 @@ function TasksTab() {
                 </p>
               )}
             </Field>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="Deadline"><input type="date" className={inputCls} value={form.deadline} onChange={e => setForm(f => ({ ...f, deadline: e.target.value }))} /></Field>
               <Field label="Priority">
                 <select className={inputCls} value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}>
@@ -1506,9 +1506,9 @@ function TasksTab() {
 
       {/* Task Detail Modal */}
       {(loadingDetail || selectedTask) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeDetail} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+          <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl max-h-[92vh] sm:max-h-[85vh] flex flex-col overflow-hidden">
             {loadingDetail ? (
               <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-[#7C3AED]" /></div>
             ) : selectedTask ? (
@@ -1528,10 +1528,28 @@ function TasksTab() {
 
                 <div className="flex border-b border-slate-100 shrink-0">
                   {(["subtasks", "messages", "submissions"] as const).map(panel => (
-                    <button key={panel} onClick={() => setDetailPanel(panel)} className={`flex-1 py-3 text-sm font-medium transition-colors capitalize ${detailPanel === panel ? "text-[#7C3AED] border-b-2 border-[#7C3AED]" : "text-slate-400 hover:text-slate-600"}`}>
-                      {panel === "subtasks" && `Checklist (${selectedTask.subtasks.filter(s => s.done).length}/${selectedTask.subtasks.length})`}
-                      {panel === "messages" && `Q&A (${selectedTask.messages.length})`}
-                      {panel === "submissions" && `Proof (${selectedTask.submissions.length})`}
+                    <button key={panel} onClick={() => setDetailPanel(panel)} className={`flex-1 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition-colors ${detailPanel === panel ? "text-[#7C3AED] border-b-2 border-[#7C3AED]" : "text-slate-400 hover:text-slate-600"}`}>
+                      {panel === "subtasks" && (
+                        <span className="flex items-center justify-center gap-1">
+                          <CheckSquare className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Checklist</span>
+                          <span className="text-xs opacity-70">({selectedTask.subtasks.filter(s => s.done).length}/{selectedTask.subtasks.length})</span>
+                        </span>
+                      )}
+                      {panel === "messages" && (
+                        <span className="flex items-center justify-center gap-1">
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Q&amp;A</span>
+                          <span className="text-xs opacity-70">({selectedTask.messages.length})</span>
+                        </span>
+                      )}
+                      {panel === "submissions" && (
+                        <span className="flex items-center justify-center gap-1">
+                          <Download className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Proof</span>
+                          <span className="text-xs opacity-70">({selectedTask.submissions.length})</span>
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>

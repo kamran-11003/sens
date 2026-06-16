@@ -24,6 +24,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { id: taskId } = await params
   const userId = (session.user as any).id
   const role = (session.user as any).role
+
+  if (role === "TEACHER") {
+    const task = await prisma.task.findUnique({ where: { id: taskId } })
+    if (!task || task.teacherId !== userId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+  }
+
   const { message } = await req.json()
 
   if (!message?.trim()) {

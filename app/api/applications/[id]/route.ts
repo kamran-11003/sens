@@ -4,7 +4,7 @@ import { auth } from "@/auth"
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
-  if (!session) {
+  if (!session || (session.user as any).role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
   const { id } = await params

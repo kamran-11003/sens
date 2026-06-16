@@ -6,12 +6,22 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const session = await auth()
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { subtaskId } = await params
+  const { id: taskId, subtaskId } = await params
+  const role = (session.user as any).role
+  const userId = (session.user as any).id
+
+  if (role === "TEACHER") {
+    const task = await prisma.task.findUnique({ where: { id: taskId } })
+    if (!task || task.teacherId !== userId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+  }
+
   const body = await req.json()
   const data: Record<string, unknown> = {}
 
   if (body.done !== undefined) data.done = body.done
-  if (body.title !== undefined) data.title = body.title
+  if (role === "ADMIN" && body.title !== undefined) data.title = body.title
 
   const subtask = await prisma.subtask.update({ where: { id: subtaskId }, data })
   return NextResponse.json(subtask)

@@ -12,6 +12,18 @@ export async function POST(req: Request) {
   const file = formData.get("file") as File | null
   if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 })
 
+  const ALLOWED = [
+    "application/pdf",
+    "image/jpeg", "image/jpg", "image/png", "image/webp",
+    "video/mp4", "video/quicktime", "video/webm",
+  ]
+  if (!ALLOWED.includes(file.type)) {
+    return NextResponse.json({ error: "Only PDF, images (JPEG/PNG/WebP), and videos (MP4/MOV/WebM) are allowed" }, { status: 400 })
+  }
+  if (file.size > 100 * 1024 * 1024) {
+    return NextResponse.json({ error: "File must be under 100MB" }, { status: 400 })
+  }
+
   const ext = file.name.split(".").pop() ?? "bin"
   const fileName = `submissions/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
 

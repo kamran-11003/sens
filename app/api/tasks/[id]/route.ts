@@ -51,6 +51,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     if (body.priority !== undefined) data.priority = body.priority
     if (body.status !== undefined) data.status = body.status
   } else if (role === "TEACHER") {
+    if (task.teacherId !== (session.user as any).id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
     if (body.status !== undefined) data.status = body.status
   }
 

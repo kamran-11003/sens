@@ -12,6 +12,19 @@ export async function POST(req: Request) {
   const file = formData.get("file") as File | null
   if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 })
 
+  const ALLOWED = [
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "image/jpeg", "image/jpg", "image/png", "image/webp",
+  ]
+  if (!ALLOWED.includes(file.type)) {
+    return NextResponse.json({ error: "Only PDF, Word, and image files are allowed" }, { status: 400 })
+  }
+  if (file.size > 20 * 1024 * 1024) {
+    return NextResponse.json({ error: "File must be under 20MB" }, { status: 400 })
+  }
+
   const ext = file.name.split(".").pop() ?? "bin"
   const fileName = `task-docs/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
 
