@@ -1,20 +1,23 @@
 "use client"
 
 import { useState } from "react"
-import { motion } from "framer-motion"
-import { MapPin, Car, Navigation, ExternalLink, Copy, Check, Clock } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
+import { MapPin, Car, Navigation, ExternalLink, Copy, Check, Clock, Route } from "lucide-react"
 
 const COLLEGE_ADDRESS = "Jinnah Chowk, Near STEP School, Daska, Sialkot, Pakistan"
-
-const MAPS_EMBED =
-  "https://maps.google.com/maps?q=Riphah+International+College+Jinnah+Chowk+Daska+Sialkot+Pakistan&output=embed&z=16"
+const COLLEGE_DEST = "Riphah+International+College+Jinnah+Chowk+Daska+Sialkot+Pakistan"
 
 const COLLEGE_MAPS_LINK = "https://maps.app.goo.gl/JqD1j7nN727etnVc9"
+
+// Default embed shows the college pinned on the map
+const DEFAULT_EMBED =
+  "https://maps.google.com/maps?q=Riphah+International+College+Jinnah+Chowk+Daska+Sialkot+Pakistan&output=embed&z=16"
 
 const routes = [
   {
     id: "1",
     name: "From Sialkot City",
+    origin: "Sialkot+City+Punjab+Pakistan",
     via: "Sialkot–Daska Road",
     duration: "~35 min",
     distance: "35 km",
@@ -24,6 +27,7 @@ const routes = [
   {
     id: "2",
     name: "From Gujranwala",
+    origin: "Gujranwala+Punjab+Pakistan",
     via: "GT Road via Wazirabad",
     duration: "~45 min",
     distance: "42 km",
@@ -33,6 +37,7 @@ const routes = [
   {
     id: "3",
     name: "From Mundekey Goraya",
+    origin: "Mundeke+Goraya+Sialkot+Pakistan",
     via: "Daska–Goraya Road",
     duration: "~15 min",
     distance: "12 km",
@@ -42,6 +47,7 @@ const routes = [
   {
     id: "4",
     name: "From Wazirabad",
+    origin: "Wazirabad+Gujranwala+Punjab+Pakistan",
     via: "Wazirabad–Daska Road",
     duration: "~20 min",
     distance: "16 km",
@@ -52,12 +58,21 @@ const routes = [
 
 export function MapSection() {
   const [copied, setCopied] = useState(false)
+  const [activeRoute, setActiveRoute] = useState<(typeof routes)[0] | null>(null)
 
   const copyAddress = () => {
     navigator.clipboard.writeText(COLLEGE_ADDRESS).catch(() => {})
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
+
+  const selectRoute = (route: (typeof routes)[0]) => {
+    setActiveRoute((prev) => (prev?.id === route.id ? null : route))
+  }
+
+  const mapSrc = activeRoute
+    ? `https://maps.google.com/maps?saddr=${activeRoute.origin}&daddr=${COLLEGE_DEST}&output=embed`
+    : DEFAULT_EMBED
 
   return (
     <section className="py-20 md:py-32 relative overflow-hidden bg-white">
@@ -79,7 +94,7 @@ export function MapSection() {
             Find Your <span className="gradient-text">Way</span>
           </h2>
           <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-            Conveniently located at Jinnah Chowk, Daska — easily reachable from Sialkot, Gujranwala, Wazirabad, and surrounding areas.
+            Select a route below to see directions straight to our campus — or click any card to load the live route on the map.
           </p>
         </motion.div>
 
@@ -92,30 +107,65 @@ export function MapSection() {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
+            {/* Active route banner */}
+            <AnimatePresence>
+              {activeRoute && (
+                <motion.div
+                  key={activeRoute.id}
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.25 }}
+                  className="flex items-center gap-2.5 mb-3 px-4 py-2.5 rounded-xl text-white text-sm font-semibold shadow-md"
+                  style={{ backgroundColor: activeRoute.color }}
+                >
+                  <Route className="w-4 h-4 shrink-0" />
+                  <span>Showing route: {activeRoute.name} → Riphah International College</span>
+                  <button
+                    onClick={() => setActiveRoute(null)}
+                    className="ml-auto opacity-70 hover:opacity-100 text-xs underline"
+                  >
+                    Reset
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-blue-100 aspect-video lg:aspect-4/3">
+              {/* Re-mount iframe when src changes so the route reloads */}
               <iframe
-                src={MAPS_EMBED}
+                key={mapSrc}
+                src={mapSrc}
                 width="100%"
                 height="100%"
                 style={{ border: 0, position: "absolute", inset: 0, width: "100%", height: "100%" }}
                 allowFullScreen
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
-                title="Riphah International College — Daska, Sialkot"
+                title={
+                  activeRoute
+                    ? `Route from ${activeRoute.name} to Riphah International College`
+                    : "Riphah International College — Daska, Sialkot"
+                }
               />
 
               {/* Get Directions button overlay */}
               <div className="absolute bottom-4 right-4 z-10">
                 <motion.a
-                  href={COLLEGE_MAPS_LINK}
+                  href={activeRoute ? activeRoute.link : COLLEGE_MAPS_LINK}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-linear-to-r from-[#1E3A8A] to-[#7C3AED] text-white font-semibold shadow-lg text-sm hover:shadow-xl transition-shadow"
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white font-semibold shadow-lg text-sm hover:shadow-xl transition-shadow"
+                  style={{
+                    background: activeRoute
+                      ? activeRoute.color
+                      : "linear-gradient(to right, #1E3A8A, #7C3AED)",
+                  }}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
                   <Navigation className="w-4 h-4" />
-                  Get Directions
+                  {activeRoute ? "Open in Maps" : "Get Directions"}
                   <ExternalLink className="w-3.5 h-3.5 opacity-70" />
                 </motion.a>
               </div>
@@ -139,44 +189,58 @@ export function MapSection() {
             transition={{ duration: 0.6, delay: 0.2 }}
           >
             <h3 className="text-xl font-bold text-[#0a1128] mb-1">Getting Here</h3>
+            <p className="text-xs text-slate-400 -mt-1 mb-1">
+              Click a route to preview it on the map
+            </p>
 
-            {routes.map((route, index) => (
-              <motion.a
-                key={route.id}
-                href={route.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 hover:bg-white border border-slate-100 hover:border-blue-100 hover:shadow-md transition-all group"
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.1 + index * 0.08 }}
-                whileHover={{ scale: 1.02 }}
-              >
-                {/* Color dot */}
-                <div
-                  className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: `${route.color}18` }}
+            {routes.map((route, index) => {
+              const isActive = activeRoute?.id === route.id
+              return (
+                <motion.button
+                  key={route.id}
+                  onClick={() => selectRoute(route)}
+                  className={`flex items-center gap-3 p-4 rounded-2xl border transition-all group text-left ${
+                    isActive
+                      ? "bg-white border-2 shadow-lg"
+                      : "bg-slate-50 hover:bg-white border-slate-100 hover:border-blue-100 hover:shadow-md"
+                  }`}
+                  style={isActive ? { borderColor: route.color } : {}}
+                  initial={{ opacity: 0, y: 16 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.1 + index * 0.08 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  <Car className="w-5 h-5" style={{ color: route.color }} />
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-semibold text-[#0a1128] text-sm leading-tight">{route.name}</h4>
-                  <p className="text-xs text-slate-400 mt-0.5">via {route.via}</p>
-                  <div className="flex items-center gap-1.5 mt-1.5">
-                    <Clock className="w-3 h-3" style={{ color: route.color }} />
-                    <span className="text-xs font-semibold" style={{ color: route.color }}>
-                      {route.duration}
-                    </span>
-                    <span className="text-xs text-slate-300">·</span>
-                    <span className="text-xs text-slate-400">{route.distance}</span>
+                  {/* Color dot */}
+                  <div
+                    className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-all"
+                    style={{ backgroundColor: isActive ? route.color : `${route.color}18` }}
+                  >
+                    <Car className="w-5 h-5" style={{ color: isActive ? "#fff" : route.color }} />
                   </div>
-                </div>
 
-                <ExternalLink className="w-4 h-4 text-slate-200 group-hover:text-[#1E3A8A] transition-colors shrink-0" />
-              </motion.a>
-            ))}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-[#0a1128] text-sm leading-tight">{route.name}</h4>
+                    <p className="text-xs text-slate-400 mt-0.5">via {route.via}</p>
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                      <Clock className="w-3 h-3" style={{ color: route.color }} />
+                      <span className="text-xs font-semibold" style={{ color: route.color }}>
+                        {route.duration}
+                      </span>
+                      <span className="text-xs text-slate-300">·</span>
+                      <span className="text-xs text-slate-400">{route.distance}</span>
+                    </div>
+                  </div>
+
+                  {isActive ? (
+                    <Route className="w-4 h-4 shrink-0" style={{ color: route.color }} />
+                  ) : (
+                    <ExternalLink className="w-4 h-4 text-slate-200 group-hover:text-[#1E3A8A] transition-colors shrink-0" />
+                  )}
+                </motion.button>
+              )
+            })}
 
             {/* Address Card */}
             <div className="mt-1 p-4 rounded-2xl bg-linear-to-br from-blue-50 to-indigo-50 border border-blue-100 shadow-sm">
