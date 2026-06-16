@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useRef, useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   User, Mail, Phone, Briefcase, Upload, Send,
@@ -30,7 +30,15 @@ export function JobApplicationSection() {
   const [isSubmitting, setSubmitting] = useState(false)
   const [isSubmitted, setSubmitted]   = useState(false)
   const [error, setError]             = useState("")
+  const [formEnabled, setFormEnabled] = useState(true)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then(r => r.json())
+      .then(d => setFormEnabled(d.teaching_form_enabled !== "false"))
+      .catch(() => setFormEnabled(true))
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -75,6 +83,22 @@ export function JobApplicationSection() {
   const resetForm = () => {
     setName(""); setEmail(""); setPhone(""); setPosition(""); setDepartment("")
     setExperience(""); setQual(""); setSummary(""); setCvFile(null); setSubmitted(false); setError("")
+  }
+
+  if (!formEnabled) {
+    return (
+      <section id="careers" className="py-20 md:py-32 relative overflow-hidden bg-white">
+        <div className="container mx-auto px-6 text-center">
+          <div className="max-w-md mx-auto bg-slate-50 rounded-3xl p-12 border border-slate-100">
+            <Briefcase className="w-14 h-14 mx-auto mb-4 text-slate-300" />
+            <h2 className="text-2xl font-bold text-[#0a1128] mb-3">Applications Currently Closed</h2>
+            <p className="text-slate-500 text-sm">
+              Teaching job applications are not being accepted at this time. Please check back later or contact us at <strong>0307-0002393</strong>.
+            </p>
+          </div>
+        </div>
+      </section>
+    )
   }
 
   return (

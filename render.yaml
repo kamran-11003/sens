@@ -43,8 +43,6 @@ services:
       # ── AI (optional) ────────────────────────────────────────────────────────
       - key: GEMINI_API_KEY
         sync: false
-      - key: OPENAI_API_KEY
-        sync: false
 
       # ── SMTP (OTP email) ─────────────────────────────────────────────────────
       - key: SMTP_HOST

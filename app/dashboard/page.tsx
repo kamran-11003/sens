@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import {
   LayoutDashboard, BookOpen, FileText, Users, Calendar, MessageSquare,
   Plus, Pencil, Trash2, Download, X, Check, Loader2, LogOut, Bot, GraduationCap, Tag, Menu,
-  Award,
+  Award, Settings,
 } from "lucide-react"
 import { signOut } from "next-auth/react"
 
@@ -46,9 +46,8 @@ interface ProgramCategory {
   id: string; slug: string; label: string; active: boolean
 }
 interface ScholarshipApplication {
-  id: string; scholarshipName: string; name: string; dob: string; gender: string; fatherName: string; cnic: string
-  lastInstitution: string; grade: string; percentage: string; phone: string; email: string; address: string
-  documentUrl: string; documentType: string; status: string; createdAt: string
+  id: string; scholarshipName: string; firstName: string; lastName: string
+  phone: string; documentUrl: string; documentType: string; status: string; createdAt: string
 }
 
 const TABS = [
@@ -61,7 +60,8 @@ const TABS = [
   { id: "events",       label: "Events",       icon: Calendar },
   { id: "contact",      label: "Contact",      icon: MessageSquare },
   { id: "teaching",     label: "Teaching Jobs", icon: GraduationCap },
-  { id: "bot",          label: "Bot & RAG",    icon: Bot },
+  { id: "bot",          label: "FAQ Bot",      icon: Bot },
+  { id: "settings",    label: "Settings",     icon: Settings },
 ]
 
 // Categories loaded dynamically from API in ProgramsTab and CategoriesTab
@@ -695,212 +695,103 @@ function TeachingTab() {
 }
 
 function BotTab() {
-  const [subTab, setSubTab] = useState<"documents" | "rules">("documents")
-
-  // Documents state
-  const [docs, setDocs] = useState<BotDocument[]>([])
-  const [docsLoading, setDocsLoading] = useState(true)
-  const [docModal, setDocModal] = useState<"add" | "edit" | null>(null)
-  const [editingDoc, setEditingDoc] = useState<BotDocument | null>(null)
-  const [docForm, setDocForm] = useState<Partial<BotDocument>>({})
-  const [docSaving, setDocSaving] = useState(false)
-
-  // Rules state
   const [rules, setRules] = useState<BotRule[]>([])
-  const [rulesLoading, setRulesLoading] = useState(true)
+  const [loading, setLoading] = useState(true)
   const [ruleModal, setRuleModal] = useState<"add" | "edit" | null>(null)
   const [editingRule, setEditingRule] = useState<BotRule | null>(null)
   const [ruleForm, setRuleForm] = useState<Partial<BotRule>>({})
   const [ruleSaving, setRuleSaving] = useState(false)
 
-  const loadDocs = useCallback(() => {
-    setDocsLoading(true)
-    fetch("/api/bot/documents").then(r => r.json()).then(d => { setDocs(d); setDocsLoading(false) }).catch(() => setDocsLoading(false))
-  }, [])
   const loadRules = useCallback(() => {
-    setRulesLoading(true)
-    fetch("/api/bot/rules").then(r => r.json()).then(d => { setRules(d); setRulesLoading(false) }).catch(() => setRulesLoading(false))
+    setLoading(true)
+    fetch("/api/bot/rules").then(r => r.json()).then(d => { setRules(Array.isArray(d) ? d : []); setLoading(false) }).catch(() => setLoading(false))
   }, [])
 
-  useEffect(() => { loadDocs(); loadRules() }, [loadDocs, loadRules])
+  useEffect(() => { loadRules() }, [loadRules])
 
-  // Document CRUD
-  const openAddDoc = () => { setDocForm({ active: true, category: "general" }); setDocModal("add") }
-  const openEditDoc = (d: BotDocument) => { setEditingDoc(d); setDocForm(d); setDocModal("edit") }
-  const closeDocModal = () => { setDocModal(null); setEditingDoc(null); setDocForm({}) }
-  const saveDoc = async () => {
-    setDocSaving(true)
-    const url = docModal === "edit" ? `/api/bot/documents/${editingDoc!.id}` : "/api/bot/documents"
-    const method = docModal === "edit" ? "PUT" : "POST"
-    await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(docForm) })
-    setDocSaving(false); closeDocModal(); loadDocs()
-  }
-  const delDoc = async (id: string) => {
-    if (!confirm("Delete this document?")) return
-    await fetch(`/api/bot/documents/${id}`, { method: "DELETE" }); loadDocs()
-  }
-
-  // Rule CRUD
-  const openAddRule = () => { setRuleForm({ active: true, priority: 0 }); setRuleModal("add") }
-  const openEditRule = (r: BotRule) => { setEditingRule(r); setRuleForm(r); setRuleModal("edit") }
-  const closeRuleModal = () => { setRuleModal(null); setEditingRule(null); setRuleForm({}) }
+  const openAdd = () => { setRuleForm({ active: true, priority: 0 }); setRuleModal("add") }
+  const openEdit = (r: BotRule) => { setEditingRule(r); setRuleForm(r); setRuleModal("edit") }
+  const closeModal = () => { setRuleModal(null); setEditingRule(null); setRuleForm({}) }
   const saveRule = async () => {
     setRuleSaving(true)
     const url = ruleModal === "edit" ? `/api/bot/rules/${editingRule!.id}` : "/api/bot/rules"
     const method = ruleModal === "edit" ? "PUT" : "POST"
     await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(ruleForm) })
-    setRuleSaving(false); closeRuleModal(); loadRules()
+    setRuleSaving(false); closeModal(); loadRules()
   }
   const delRule = async (id: string) => {
-    if (!confirm("Delete this rule?")) return
+    if (!confirm("Delete this FAQ item?")) return
     await fetch(`/api/bot/rules/${id}`, { method: "DELETE" }); loadRules()
   }
 
-  const BOT_CATEGORIES = ["general", "programs", "admissions", "fees", "faculty", "events", "contact"]
-
   return (
     <div>
-      <div className="flex items-center gap-4 mb-6">
-        <h2 className="text-2xl font-bold text-[#0a1128]">Bot &amp; RAG Management</h2>
-      </div>
-      <p className="text-slate-500 text-sm mb-6">Manage the knowledge base and behavior rules for the RIC Assistant chatbot.</p>
+      <h2 className="text-2xl font-bold text-[#0a1128] mb-2">FAQ Bot Management</h2>
+      <p className="text-slate-500 text-sm mb-6">
+        Manage the chatbot&apos;s FAQ items. The <strong>Question</strong> is displayed as a button in the chat widget; the <strong>Answer</strong> is shown when the user taps it.
+      </p>
 
-      {/* Sub-tabs */}
-      <div className="flex gap-2 mb-6 border-b border-slate-100">
-        {(["documents", "rules"] as const).map(t => (
-          <button
-            key={t}
-            onClick={() => setSubTab(t)}
-            className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors -mb-px capitalize ${subTab === t ? "border-[#1E3A8A] text-[#1E3A8A]" : "border-transparent text-slate-500 hover:text-[#0a1128]"}`}
-          >
-            {t === "documents" ? "Knowledge Base (Documents)" : "Bot Rules & Instructions"}
-          </button>
-        ))}
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm text-slate-400">Showing {rules.length} FAQ item{rules.length !== 1 ? "s" : ""}</p>
+        <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1E3A8A] text-white text-sm font-semibold hover:bg-[#1E3A8A]/90 transition-colors">
+          <Plus className="w-4 h-4" /> Add FAQ Item
+        </button>
       </div>
 
-      {subTab === "documents" && (
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-slate-500">Documents are searched to answer user questions.</p>
-            <button onClick={openAddDoc} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1E3A8A] text-white text-sm font-semibold hover:bg-[#1E3A8A]/90 transition-colors">
-              <Plus className="w-4 h-4" /> Add Document
-            </button>
-          </div>
-          {docsLoading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-[#1E3A8A]" /></div> : docs.length === 0 ? (
-            <div className="bg-white rounded-2xl p-12 text-center text-slate-400 border border-slate-100">
-              <Bot className="w-10 h-10 mx-auto mb-3 opacity-30" />
-              <p>No documents yet. Add knowledge base content for the bot.</p>
-            </div>
-          ) : (
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden overflow-x-auto">
-              <table className="w-full text-sm min-w-[600px]">
-                <thead className="bg-slate-50 border-b border-slate-100">
-                  <tr>{["Title","Category","File","Active",""].map(h => <th key={h} className="text-left py-3 px-4 text-slate-500 font-medium">{h}</th>)}</tr>
-                </thead>
-                <tbody>
-                  {docs.map(d => (
-                    <tr key={d.id} className="border-b border-slate-50 hover:bg-slate-50">
-                      <td className="py-3 px-4 font-medium text-[#0a1128]">{d.title}</td>
-                      <td className="py-3 px-4 text-slate-500">{d.category}</td>
-                      <td className="py-3 px-4 text-slate-500">{d.fileName || "—"}</td>
-                      <td className="py-3 px-4">{d.active ? <Check className="w-4 h-4 text-green-600" /> : <X className="w-4 h-4 text-slate-400" />}</td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => openEditDoc(d)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"><Pencil className="w-4 h-4" /></button>
-                          <button onClick={() => delDoc(d.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          {docModal && (
-            <Modal title={docModal === "add" ? "Add Document" : "Edit Document"} onClose={closeDocModal}>
-              <div className="space-y-4">
-                <Field label="Title *"><input className={inputCls} value={docForm.title ?? ""} onChange={e => setDocForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Programs Overview" /></Field>
-                <Field label="Category">
-                  <select className={inputCls} value={docForm.category ?? "general"} onChange={e => setDocForm(f => ({ ...f, category: e.target.value }))}>
-                    {BOT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </Field>
-                <Field label="File Name (optional)"><input className={inputCls} value={docForm.fileName ?? ""} onChange={e => setDocForm(f => ({ ...f, fileName: e.target.value }))} placeholder="e.g. programs.pdf" /></Field>
-                <Field label="Content * (text the bot will search through)">
-                  <textarea className={`${inputCls} min-h-[160px]`} value={docForm.content ?? ""} onChange={e => setDocForm(f => ({ ...f, content: e.target.value }))} placeholder="Paste or type the full text content here..." />
-                </Field>
-                <div className="flex items-center gap-2">
-                  <input type="checkbox" id="doc-active" checked={docForm.active ?? true} onChange={e => setDocForm(f => ({ ...f, active: e.target.checked }))} />
-                  <label htmlFor="doc-active" className="text-sm font-medium text-slate-700">Active (bot will use this document)</label>
-                </div>
-                <button onClick={saveDoc} disabled={docSaving} className="w-full py-3 rounded-xl bg-[#1E3A8A] text-white font-semibold flex items-center justify-center gap-2 hover:bg-[#1E3A8A]/90 transition-colors disabled:opacity-60">
-                  {docSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : "Save Document"}
-                </button>
-              </div>
-            </Modal>
-          )}
+      {loading ? (
+        <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-[#1E3A8A]" /></div>
+      ) : rules.length === 0 ? (
+        <div className="bg-white rounded-2xl p-12 text-center text-slate-400 border border-slate-100">
+          <Bot className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p>No FAQ items yet. Click &quot;Add FAQ Item&quot; to get started.</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden overflow-x-auto">
+          <table className="w-full text-sm min-w-[600px]">
+            <thead className="bg-slate-50 border-b border-slate-100">
+              <tr>{["Question","Answer","Order","Active",""].map(h => <th key={h} className="text-left py-3 px-4 text-slate-500 font-medium">{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {rules.map(r => (
+                <tr key={r.id} className="border-b border-slate-50 hover:bg-slate-50">
+                  <td className="py-3 px-4 font-medium text-[#0a1128] max-w-[200px] truncate">{r.title}</td>
+                  <td className="py-3 px-4 text-slate-500 max-w-xs truncate">{r.rule}</td>
+                  <td className="py-3 px-4 text-slate-500">{r.priority}</td>
+                  <td className="py-3 px-4">{r.active ? <Check className="w-4 h-4 text-green-600" /> : <X className="w-4 h-4 text-slate-400" />}</td>
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => openEdit(r)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"><Pencil className="w-4 h-4" /></button>
+                      <button onClick={() => delRule(r.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
-      {subTab === "rules" && (
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-slate-500">Rules define how the bot behaves and responds.</p>
-            <button onClick={openAddRule} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#7C3AED] text-white text-sm font-semibold hover:bg-[#7C3AED]/90 transition-colors">
-              <Plus className="w-4 h-4" /> Add Rule
+      {ruleModal && (
+        <Modal title={ruleModal === "add" ? "Add FAQ Item" : "Edit FAQ Item"} onClose={closeModal}>
+          <div className="space-y-4">
+            <Field label="Question (shown as button in chatbot) *">
+              <input className={inputCls} value={ruleForm.title ?? ""} onChange={e => setRuleForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. What are the admission requirements?" />
+            </Field>
+            <Field label="Answer *">
+              <textarea className={`${inputCls} min-h-[120px]`} value={ruleForm.rule ?? ""} onChange={e => setRuleForm(f => ({ ...f, rule: e.target.value }))} placeholder="Type the answer to this question..." />
+            </Field>
+            <Field label="Display Order (lower = higher priority)">
+              <input type="number" className={inputCls} value={ruleForm.priority ?? 0} onChange={e => setRuleForm(f => ({ ...f, priority: Number(e.target.value) }))} />
+            </Field>
+            <div className="flex items-center gap-2">
+              <input type="checkbox" id="rule-active" checked={ruleForm.active ?? true} onChange={e => setRuleForm(f => ({ ...f, active: e.target.checked }))} />
+              <label htmlFor="rule-active" className="text-sm font-medium text-slate-700">Active (visible in chatbot)</label>
+            </div>
+            <button onClick={saveRule} disabled={ruleSaving} className="w-full py-3 rounded-xl bg-[#1E3A8A] text-white font-semibold flex items-center justify-center gap-2 hover:bg-[#1E3A8A]/90 transition-colors disabled:opacity-60">
+              {ruleSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : "Save FAQ Item"}
             </button>
           </div>
-          {rulesLoading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-[#7C3AED]" /></div> : rules.length === 0 ? (
-            <div className="bg-white rounded-2xl p-12 text-center text-slate-400 border border-slate-100">
-              <Bot className="w-10 h-10 mx-auto mb-3 opacity-30" />
-              <p>No rules yet. Add behavior rules for the bot.</p>
-            </div>
-          ) : (
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden overflow-x-auto">
-              <table className="w-full text-sm min-w-[600px]">
-                <thead className="bg-slate-50 border-b border-slate-100">
-                  <tr>{["Title","Rule","Priority","Active",""].map(h => <th key={h} className="text-left py-3 px-4 text-slate-500 font-medium">{h}</th>)}</tr>
-                </thead>
-                <tbody>
-                  {rules.map(r => (
-                    <tr key={r.id} className="border-b border-slate-50 hover:bg-slate-50">
-                      <td className="py-3 px-4 font-medium text-[#0a1128]">{r.title}</td>
-                      <td className="py-3 px-4 text-slate-500 max-w-xs truncate">{r.rule}</td>
-                      <td className="py-3 px-4 text-slate-500">{r.priority}</td>
-                      <td className="py-3 px-4">{r.active ? <Check className="w-4 h-4 text-green-600" /> : <X className="w-4 h-4 text-slate-400" />}</td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => openEditRule(r)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"><Pencil className="w-4 h-4" /></button>
-                          <button onClick={() => delRule(r.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          {ruleModal && (
-            <Modal title={ruleModal === "add" ? "Add Rule" : "Edit Rule"} onClose={closeRuleModal}>
-              <div className="space-y-4">
-                <Field label="Title *"><input className={inputCls} value={ruleForm.title ?? ""} onChange={e => setRuleForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Default Response" /></Field>
-                <Field label="Rule Text *">
-                  <textarea className={`${inputCls} min-h-[100px]`} value={ruleForm.rule ?? ""} onChange={e => setRuleForm(f => ({ ...f, rule: e.target.value }))} placeholder="e.g. Always be polite and professional..." />
-                </Field>
-                <Field label="Priority (higher = more important)">
-                  <input type="number" className={inputCls} value={ruleForm.priority ?? 0} onChange={e => setRuleForm(f => ({ ...f, priority: Number(e.target.value) }))} />
-                </Field>
-                <div className="flex items-center gap-2">
-                  <input type="checkbox" id="rule-active" checked={ruleForm.active ?? true} onChange={e => setRuleForm(f => ({ ...f, active: e.target.checked }))} />
-                  <label htmlFor="rule-active" className="text-sm font-medium text-slate-700">Active</label>
-                </div>
-                <button onClick={saveRule} disabled={ruleSaving} className="w-full py-3 rounded-xl bg-[#7C3AED] text-white font-semibold flex items-center justify-center gap-2 hover:bg-[#7C3AED]/90 transition-colors disabled:opacity-60">
-                  {ruleSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : "Save Rule"}
-                </button>
-              </div>
-            </Modal>
-          )}
-        </div>
+        </Modal>
       )}
     </div>
   )
@@ -1061,10 +952,10 @@ function ScholarshipsTab() {
         </div>
       ) : (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden overflow-x-auto">
-          <table className="w-full text-sm min-w-[900px]">
+          <table className="w-full text-sm min-w-[700px]">
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
-                {["Student Name", "Scholarship", "Email", "Phone", "Grade", "Percentage", "Doc Type", "Status", "Date", ""].map(h => (
+                {["Name", "Scholarship", "Phone", "Doc Type", "Status", "Date", ""].map(h => (
                   <th key={h} className="text-left py-3 px-4 text-slate-500 font-medium">{h}</th>
                 ))}
               </tr>
@@ -1072,12 +963,9 @@ function ScholarshipsTab() {
             <tbody>
               {apps.map(a => (
                 <tr key={a.id} className="border-b border-slate-50 hover:bg-slate-50">
-                  <td className="py-3 px-4 font-medium text-[#0a1128]">{a.name}</td>
+                  <td className="py-3 px-4 font-medium text-[#0a1128]">{a.firstName} {a.lastName}</td>
                   <td className="py-3 px-4 text-slate-600 font-medium">{a.scholarshipName}</td>
-                  <td className="py-3 px-4 text-slate-500">{a.email}</td>
                   <td className="py-3 px-4 text-slate-500">{a.phone}</td>
-                  <td className="py-3 px-4 text-slate-500">{a.grade}</td>
-                  <td className="py-3 px-4 text-slate-500">{a.percentage}</td>
                   <td className="py-3 px-4 text-slate-500 capitalize">{a.documentType}</td>
                   <td className="py-3 px-4">
                     <select 
@@ -1116,33 +1004,16 @@ function ScholarshipsTab() {
 
       {viewApp && (
         <Modal title="Scholarship Application Details" onClose={() => setViewApp(null)}>
-          <div className="space-y-4 text-sm max-h-[70vh] overflow-y-auto pr-2">
-            <div className="bg-slate-50 p-4 rounded-xl space-y-2 border border-slate-100">
-              <div><span className="font-semibold text-slate-500 text-xs uppercase block">Applied Scholarship</span> <span className="font-bold text-[#0a1128] text-base">{viewApp.scholarshipName}</span></div>
+          <div className="space-y-4 text-sm">
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+              <span className="font-semibold text-slate-500 text-xs uppercase block">Applied Scholarship</span>
+              <span className="font-bold text-[#0a1128] text-base">{viewApp.scholarshipName}</span>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div><span className="font-semibold text-slate-500 text-xs uppercase block">Student Name</span> <span className="text-[#0a1128] font-medium">{viewApp.name}</span></div>
-              <div><span className="font-semibold text-slate-500 text-xs uppercase block">Father's Name</span> <span className="text-[#0a1128] font-medium">{viewApp.fatherName}</span></div>
-              <div><span className="font-semibold text-slate-500 text-xs uppercase block">Date of Birth</span> <span className="text-[#0a1128]">{viewApp.dob}</span></div>
-              <div><span className="font-semibold text-slate-500 text-xs uppercase block">Gender</span> <span className="text-[#0a1128] capitalize">{viewApp.gender}</span></div>
-              <div className="col-span-2"><span className="font-semibold text-slate-500 text-xs uppercase block">CNIC / B-Form</span> <span className="text-[#0a1128] font-mono">{viewApp.cnic}</span></div>
-            </div>
-
-            <hr className="border-slate-100" />
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2"><span className="font-semibold text-slate-500 text-xs uppercase block">Last Attended Institution</span> <span className="text-[#0a1128] font-medium">{viewApp.lastInstitution}</span></div>
-              <div><span className="font-semibold text-slate-500 text-xs uppercase block">Last Grade / Exam</span> <span className="text-[#0a1128]">{viewApp.grade}</span></div>
-              <div><span className="font-semibold text-slate-500 text-xs uppercase block">GPA / Percentage</span> <span className="text-[#0a1128]">{viewApp.percentage}</span></div>
-            </div>
-
-            <hr className="border-slate-100" />
-
-            <div className="space-y-3">
-              <div><span className="font-semibold text-slate-500 text-xs uppercase block">Guardian Phone</span> <span className="text-[#0a1128]">{viewApp.phone}</span></div>
-              <div><span className="font-semibold text-slate-500 text-xs uppercase block">Guardian Email</span> <span className="text-[#0a1128]">{viewApp.email}</span></div>
-              <div><span className="font-semibold text-slate-500 text-xs uppercase block">Residential Address</span> <p className="text-slate-600 mt-0.5 bg-slate-50 rounded-lg p-2.5 text-xs whitespace-pre-wrap">{viewApp.address}</p></div>
+              <div><span className="font-semibold text-slate-500 text-xs uppercase block">First Name</span> <span className="text-[#0a1128] font-medium">{viewApp.firstName}</span></div>
+              <div><span className="font-semibold text-slate-500 text-xs uppercase block">Last Name</span> <span className="text-[#0a1128] font-medium">{viewApp.lastName}</span></div>
+              <div className="col-span-2"><span className="font-semibold text-slate-500 text-xs uppercase block">Phone Number</span> <span className="text-[#0a1128]">{viewApp.phone}</span></div>
             </div>
 
             <hr className="border-slate-100" />
@@ -1153,11 +1024,11 @@ function ScholarshipsTab() {
                 <span className="text-xs text-slate-500 capitalize">{viewApp.documentType} Document</span>
               </div>
               {viewApp.documentUrl ? (
-                <a 
-                  href={viewApp.documentUrl} 
-                  target="_blank" 
+                <a
+                  href={viewApp.documentUrl}
+                  target="_blank"
                   rel="noopener noreferrer"
-                  className="px-4 py-2 rounded-lg bg-[#1E3A8A] hover:bg-[#1E3A8A]/90 text-white text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
+                  className="px-4 py-2 rounded-lg bg-[#1E3A8A] hover:bg-[#1E3A8A]/90 text-white text-xs font-semibold transition-colors flex items-center gap-1.5"
                 >
                   <Download className="w-3.5 h-3.5" /> View File
                 </a>
@@ -1174,17 +1045,88 @@ function ScholarshipsTab() {
                   viewApp.status === "REJECTED" ? "bg-red-100 text-red-700" :
                   viewApp.status === "REVIEWED" ? "bg-blue-100 text-blue-700" :
                   "bg-yellow-100 text-yellow-700"
-                }`}>
-                  {viewApp.status}
-                </span>
+                }`}>{viewApp.status}</span>
               </div>
               <div>
-                <span className="font-semibold text-slate-500 text-xs uppercase block">Submission Date</span>
+                <span className="font-semibold text-slate-500 text-xs uppercase block">Submitted</span>
                 <span className="text-slate-600 text-xs mt-1 inline-block">{new Date(viewApp.createdAt).toLocaleString()}</span>
               </div>
             </div>
           </div>
         </Modal>
+      )}
+    </div>
+  )
+}
+
+function SettingsTab() {
+  const FORM_KEYS = [
+    { key: "admission_form_enabled",   label: "Admission Form",           desc: "Allow students to submit admission applications" },
+    { key: "teaching_form_enabled",    label: "Teaching Job Applications", desc: "Allow applicants to apply for teaching positions" },
+    { key: "scholarship_form_enabled", label: "Scholarship Applications",  desc: "Allow students to apply for scholarships" },
+  ]
+
+  const [values, setValues] = useState<Record<string, boolean>>({
+    admission_form_enabled:   true,
+    teaching_form_enabled:    true,
+    scholarship_form_enabled: true,
+  })
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then(r => r.json())
+      .then(d => {
+        setValues({
+          admission_form_enabled:   d.admission_form_enabled   !== "false",
+          teaching_form_enabled:    d.teaching_form_enabled    !== "false",
+          scholarship_form_enabled: d.scholarship_form_enabled !== "false",
+        })
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [])
+
+  const toggle = async (key: string) => {
+    setSaving(key)
+    const next = !values[key]
+    await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key, value: String(next) }),
+    })
+    setValues(prev => ({ ...prev, [key]: next }))
+    setSaving(null)
+  }
+
+  return (
+    <div>
+      <h2 className="text-2xl font-bold text-[#0a1128] mb-2">Form Settings</h2>
+      <p className="text-slate-500 text-sm mb-8">
+        Enable or disable public-facing application forms. Disabled forms show a &quot;currently closed&quot; notice to visitors.
+      </p>
+      {loading ? (
+        <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-[#1E3A8A]" /></div>
+      ) : (
+        <div className="space-y-4 max-w-2xl">
+          {FORM_KEYS.map(({ key, label, desc }) => (
+            <div key={key} className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex items-center justify-between gap-6">
+              <div>
+                <h3 className="font-semibold text-[#0a1128]">{label}</h3>
+                <p className="text-sm text-slate-500 mt-0.5">{desc}</p>
+              </div>
+              <button
+                onClick={() => toggle(key)}
+                disabled={saving === key}
+                aria-label={`Toggle ${label}`}
+                className={`relative w-14 h-7 rounded-full transition-colors shrink-0 ${values[key] ? "bg-[#10B981]" : "bg-slate-200"} ${saving === key ? "opacity-60" : "cursor-pointer"}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${values[key] ? "translate-x-7" : "translate-x-0"}`} />
+              </button>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   )
@@ -1300,6 +1242,7 @@ export default function AdminDashboard() {
           {activeTab === "contact"      && <ContactTab />}
           {activeTab === "teaching"     && <TeachingTab />}
           {activeTab === "bot"          && <BotTab />}
+          {activeTab === "settings"     && <SettingsTab />}
         </main>
       </div>
     </div>

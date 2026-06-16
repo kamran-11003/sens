@@ -28,9 +28,14 @@ export function AdmissionFormSection({ preselectedProgramId }: { preselectedProg
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [error, setError] = useState("")
+  const [formEnabled, setFormEnabled] = useState(true)
 
   useEffect(() => {
     fetch("/api/programs").then(r => r.json()).then(setPrograms).catch(() => {})
+    fetch("/api/settings")
+      .then(r => r.json())
+      .then(d => setFormEnabled(d.admission_form_enabled !== "false"))
+      .catch(() => setFormEnabled(true))
   }, [])
 
   useEffect(() => {
@@ -190,6 +195,22 @@ export function AdmissionFormSection({ preselectedProgramId }: { preselectedProg
         )
       default: return null
     }
+  }
+
+  if (!formEnabled) {
+    return (
+      <section className="py-20 md:py-32 relative overflow-hidden bg-white">
+        <div className="container mx-auto px-6 text-center">
+          <div className="max-w-md mx-auto bg-slate-50 rounded-3xl p-12 border border-slate-100">
+            <GraduationCap className="w-14 h-14 mx-auto mb-4 text-slate-300" />
+            <h2 className="text-2xl font-bold text-[#0a1128] mb-3">Admissions Currently Closed</h2>
+            <p className="text-slate-500 text-sm">
+              Online admission applications are not being accepted at this time. Please check back later or contact us at <strong>0307-0002393</strong> for more information.
+            </p>
+          </div>
+        </div>
+      </section>
+    )
   }
 
   return (

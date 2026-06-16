@@ -216,21 +216,20 @@ model TeachingApplication {
 model ScholarshipApplication {
   id              String            @id @default(cuid())
   scholarshipName String
-  name            String
-  dob             String
-  gender          String
-  fatherName      String
-  cnic            String
-  lastInstitution String
-  grade           String
-  percentage      String
+  firstName       String
+  lastName        String
   phone           String
-  email           String
-  address         String
   documentUrl     String            @default("")
-  documentType    String            // e.g. result, sports, other
+  documentType    String            @default("other")
   status          ApplicationStatus @default(PENDING)
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
+}
+
+model SiteSettings {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   @default("true")
+  updatedAt DateTime @updatedAt
 }
 
