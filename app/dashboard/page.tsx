@@ -25,6 +25,8 @@ interface Faculty {
   id: string; name: string; title: string; department: string; bio: string
   specializations: string[]; publications: number | null; awards: number | null
   students: number | null; image: string; isDirector: boolean; displayOrder: number
+  userId: string | null
+  user: { id: string; email: string; name: string | null } | null
 }
 interface Event {
   id: string; title: string; type: string; date: string; time: string | null
@@ -331,9 +333,7 @@ function ApplicationsTab() {
 }
 
 function FacultyTab() {
-  const [subTab, setSubTab] = useState<"members" | "teachers">("members")
-
-  // ── Faculty Members ──────────────────────────────────────────────────────────
+  // ── Faculty state ─────────────────────────────────────────────────────────────
   const [faculty, setFaculty] = useState<Faculty[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<"add" | "edit" | null>(null)
@@ -342,9 +342,19 @@ function FacultyTab() {
   const [saving, setSaving] = useState(false)
   const [imageUploading, setImageUploading] = useState(false)
 
+  // ── Login credential state (per-faculty modal) ────────────────────────────────
+  const [loginTarget, setLoginTarget] = useState<Faculty | null>(null)
+  const [loginForm, setLoginForm] = useState({ email: "", password: "" })
+  const [loginSaving, setLoginSaving] = useState(false)
+  const [loginError, setLoginError] = useState("")
+  const [showPwd, setShowPwd] = useState(false)
+
   const load = useCallback(() => {
     setLoading(true)
-    fetch("/api/faculty").then(r => r.json()).then(d => { setFaculty(Array.isArray(d) ? d : []); setLoading(false) }).catch(() => setLoading(false))
+    fetch("/api/faculty")
+      .then(r => r.json())
+      .then(d => { setFaculty(Array.isArray(d) ? d : []); setLoading(false) })
+      .catch(() => setLoading(false))
   }, [])
   useEffect(() => { load() }, [load])
 
@@ -378,159 +388,134 @@ function FacultyTab() {
     await fetch(`/api/faculty/${id}`, { method: "DELETE" }); load()
   }
 
-  // ── Teacher Accounts ─────────────────────────────────────────────────────────
-  const [teachers, setTeachers] = useState<Teacher[]>([])
-  const [tLoading, setTLoading] = useState(true)
-  const [tModal, setTModal] = useState<"add" | "edit" | null>(null)
-  const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null)
-  const [tForm, setTForm] = useState({ name: "", email: "", password: "", facultyMemberId: "" })
-  const [tSaving, setTSaving] = useState(false)
-  const [showPwd, setShowPwd] = useState(false)
-
-  const loadTeachers = useCallback(() => {
-    setTLoading(true)
-    fetch("/api/teachers").then(r => r.json()).then(d => { setTeachers(Array.isArray(d) ? d : []); setTLoading(false) }).catch(() => setTLoading(false))
-  }, [])
-
-  useEffect(() => { loadTeachers() }, [loadTeachers])
-
-  const openAddTeacher = () => { setTForm({ name: "", email: "", password: "", facultyMemberId: "" }); setTModal("add") }
-  const openEditTeacher = (t: Teacher) => {
-    setEditingTeacher(t)
-    setTForm({ name: t.name ?? "", email: t.email, password: "", facultyMemberId: t.facultyProfile?.id ?? "" })
-    setTModal("edit")
+  // Open credential modal for a specific faculty member
+  const openLogin = (m: Faculty) => {
+    setLoginTarget(m)
+    setLoginForm({ email: m.user?.email ?? "", password: "" })
+    setLoginError("")
+    setShowPwd(false)
   }
-  const closeTModal = () => { setTModal(null); setEditingTeacher(null); setShowPwd(false) }
+  const closeLogin = () => { setLoginTarget(null); setLoginError("") }
 
-  const saveTeacher = async () => {
-    setTSaving(true)
-    if (tModal === "add") {
-      const body: Record<string, string> = { name: tForm.name, email: tForm.email, password: tForm.password }
-      if (tForm.facultyMemberId) body.facultyMemberId = tForm.facultyMemberId
-      await fetch("/api/teachers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
-    } else if (editingTeacher) {
-      const body: Record<string, string> = {}
-      if (tForm.name) body.name = tForm.name
-      if (tForm.email) body.email = tForm.email
-      if (tForm.password) body.password = tForm.password
-      await fetch(`/api/teachers/${editingTeacher.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+  const saveLogin = async () => {
+    if (!loginTarget) return
+    if (!loginForm.email) { setLoginError("Email is required."); return }
+    if (!loginTarget.userId && !loginForm.password) { setLoginError("Password is required for a new account."); return }
+    setLoginSaving(true)
+    setLoginError("")
+    try {
+      if (loginTarget.userId) {
+        // Update existing teacher user credentials
+        const body: Record<string, string> = { email: loginForm.email }
+        if (loginForm.password) body.password = loginForm.password
+        const res = await fetch(`/api/teachers/${loginTarget.userId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+        if (!res.ok) { const j = await res.json(); setLoginError(j.error ?? "Failed to update."); return }
+      } else {
+        // Create new teacher account linked to this faculty member
+        const res = await fetch("/api/teachers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: loginTarget.name, email: loginForm.email, password: loginForm.password, facultyMemberId: loginTarget.id }),
+        })
+        if (!res.ok) { const j = await res.json(); setLoginError(j.error ?? "Failed to create account."); return }
+      }
+      closeLogin()
+      load()
+    } finally {
+      setLoginSaving(false)
     }
-    setTSaving(false); closeTModal(); loadTeachers()
   }
 
-  const delTeacher = async (id: string) => {
-    if (!confirm("Delete this teacher account? They will lose portal access.")) return
-    await fetch(`/api/teachers/${id}`, { method: "DELETE" }); loadTeachers()
+  const removeLogin = async (m: Faculty) => {
+    if (!m.userId) return
+    if (!confirm(`Remove portal access for ${m.name}? They will no longer be able to sign in.`)) return
+    await fetch(`/api/teachers/${m.userId}`, { method: "DELETE" })
+    load()
   }
-
-  const unlinkedFaculty = faculty.filter(f => !teachers.some(t => t.facultyProfile?.id === f.id))
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-[#0a1128]">Faculty</h2>
-        <div className="flex items-center gap-2">
-          <div className="flex rounded-xl border border-slate-200 overflow-hidden text-sm">
-            <button onClick={() => setSubTab("members")} className={`px-3 py-2 font-medium transition-colors ${subTab === "members" ? "bg-[#7C3AED] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
-              Faculty Members
-            </button>
-            <button onClick={() => setSubTab("teachers")} className={`px-3 py-2 font-medium transition-colors ${subTab === "teachers" ? "bg-[#7C3AED] text-white" : "text-slate-500 hover:bg-slate-50"}`}>
-              Teacher Logins
-            </button>
-          </div>
-          {subTab === "members" && (
-            <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#7C3AED] text-white text-sm font-semibold hover:bg-[#7C3AED]/90 transition-colors">
-              <Plus className="w-4 h-4" /> Add Member
-            </button>
-          )}
-          {subTab === "teachers" && (
-            <button onClick={openAddTeacher} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#7C3AED] text-white text-sm font-semibold hover:bg-[#7C3AED]/90 transition-colors">
-              <Key className="w-4 h-4" /> Add Teacher Login
-            </button>
-          )}
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-2xl font-bold text-[#0a1128]">Faculty</h2>
+          <p className="text-sm text-slate-500 mt-0.5">Click <Key className="w-3.5 h-3.5 inline -mt-0.5" /> on any row to assign or update their teacher portal login.</p>
         </div>
+        <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#7C3AED] text-white text-sm font-semibold hover:bg-[#7C3AED]/90 transition-colors">
+          <Plus className="w-4 h-4" /> Add Member
+        </button>
       </div>
 
-      {subTab === "members" && (
-        loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-[#7C3AED]" /></div> : (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden overflow-x-auto">
-            <table className="w-full text-sm min-w-[650px]">
-              <thead className="bg-slate-50 border-b border-slate-100">
-                <tr>{["Name","Title","Department","Director","Order","Portal",""].map(h => <th key={h} className="text-left py-3 px-4 text-slate-500 font-medium">{h}</th>)}</tr>
-              </thead>
-              <tbody>
-                {faculty.map(m => {
-                  const hasLogin = teachers.some(t => t.facultyProfile?.id === m.id)
-                  return (
-                    <tr key={m.id} className="border-b border-slate-50 hover:bg-slate-50">
-                      <td className="py-3 px-4 font-medium text-[#0a1128]">{m.name}</td>
-                      <td className="py-3 px-4 text-slate-500">{m.title}</td>
-                      <td className="py-3 px-4 text-slate-500">{m.department}</td>
-                      <td className="py-3 px-4">{m.isDirector ? <Check className="w-4 h-4 text-green-600" /> : "—"}</td>
-                      <td className="py-3 px-4 text-slate-500">{m.displayOrder}</td>
-                      <td className="py-3 px-4">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${hasLogin ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-400"}`}>
-                          {hasLogin ? "Active" : "None"}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => openEdit(m)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"><Pencil className="w-4 h-4" /></button>
-                          <button onClick={() => del(m.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )
-      )}
-
-      {subTab === "teachers" && (
-        tLoading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-[#7C3AED]" /></div>
-        : teachers.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center text-slate-400">
-            <Key className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p>No teacher accounts yet. Add one to grant portal access.</p>
-          </div>
-        ) : (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden overflow-x-auto">
-            <table className="w-full text-sm min-w-[600px]">
-              <thead className="bg-slate-50 border-b border-slate-100">
-                <tr>{["Name","Email","Linked Faculty","Created",""].map(h => <th key={h} className="text-left py-3 px-4 text-slate-500 font-medium">{h}</th>)}</tr>
-              </thead>
-              <tbody>
-                {teachers.map(t => (
-                  <tr key={t.id} className="border-b border-slate-50 hover:bg-slate-50">
-                    <td className="py-3 px-4 font-medium text-[#0a1128]">{t.name ?? "—"}</td>
-                    <td className="py-3 px-4 text-slate-500">{t.email}</td>
-                    <td className="py-3 px-4">
-                      {t.facultyProfile ? (
-                        <span className="flex items-center gap-1.5 text-green-700">
-                          <Link2 className="w-3.5 h-3.5" /> {t.facultyProfile.name}
-                        </span>
+      {loading ? (
+        <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-[#7C3AED]" /></div>
+      ) : faculty.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center text-slate-400">
+          <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p>No faculty members yet.</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden overflow-x-auto">
+          <table className="w-full text-sm min-w-[700px]">
+            <thead className="bg-slate-50 border-b border-slate-100">
+              <tr>{["Name","Title","Department","Director","Portal Access",""].map(h => <th key={h} className="text-left py-3 px-4 text-slate-500 font-medium">{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {faculty.map(m => (
+                <tr key={m.id} className="border-b border-slate-50 hover:bg-slate-50">
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-3">
+                      {m.image ? (
+                        <img src={m.image} alt={m.name} className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0" />
                       ) : (
-                        <span className="text-slate-400 text-xs">Unlinked</span>
+                        <div className="w-8 h-8 rounded-full bg-[#7C3AED]/10 flex items-center justify-center shrink-0 text-[#7C3AED] text-xs font-bold">
+                          {m.name.charAt(0)}
+                        </div>
                       )}
-                    </td>
-                    <td className="py-3 px-4 text-slate-500">{new Date(t.createdAt).toLocaleDateString()}</td>
-                    <td className="py-3 px-4">
+                      <span className="font-medium text-[#0a1128]">{m.name}</span>
+                    </div>
+                  </td>
+                  <td className="py-3 px-4 text-slate-500">{m.title}</td>
+                  <td className="py-3 px-4 text-slate-500">{m.department}</td>
+                  <td className="py-3 px-4">{m.isDirector ? <Check className="w-4 h-4 text-green-600" /> : "—"}</td>
+                  <td className="py-3 px-4">
+                    {m.user ? (
                       <div className="flex items-center gap-2">
-                        <button onClick={() => openEditTeacher(t)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"><Pencil className="w-4 h-4" /></button>
-                        <button onClick={() => delTeacher(t.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-green-50 border border-green-200 text-green-700 text-xs font-medium">
+                          <Check className="w-3 h-3" /> {m.user.email}
+                        </span>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )
+                    ) : (
+                      <span className="text-xs text-slate-400 italic">No portal access</span>
+                    )}
+                  </td>
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => openLogin(m)}
+                        title={m.user ? "Edit login credentials" : "Set login credentials"}
+                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${m.user ? "bg-green-50 hover:bg-green-100 text-green-700 border border-green-200" : "bg-[#7C3AED]/10 hover:bg-[#7C3AED]/20 text-[#7C3AED] border border-[#7C3AED]/20"}`}
+                      >
+                        <Key className="w-3.5 h-3.5" />
+                        {m.user ? "Edit Login" : "Set Login"}
+                      </button>
+                      <button onClick={() => openEdit(m)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"><Pencil className="w-4 h-4" /></button>
+                      {m.user && (
+                        <button onClick={() => removeLogin(m)} title="Remove portal access" className="p-1.5 rounded-lg hover:bg-orange-50 text-orange-400 transition-colors"><Link2 className="w-4 h-4" /></button>
+                      )}
+                      <button onClick={() => del(m.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
-      {/* Faculty member modal */}
+      {/* ── Edit / Add faculty member modal ── */}
       {modal && (
         <Modal title={modal === "add" ? "Add Faculty Member" : "Edit Faculty Member"} onClose={closeModal}>
           <div className="space-y-4">
@@ -561,41 +546,62 @@ function FacultyTab() {
         </Modal>
       )}
 
-      {/* Teacher login modal */}
-      {tModal && (
-        <Modal title={tModal === "add" ? "Add Teacher Account" : "Edit Teacher Credentials"} onClose={closeTModal}>
+      {/* ── Set / Edit login credentials modal ── */}
+      {loginTarget && (
+        <Modal
+          title={loginTarget.user ? `Edit Login — ${loginTarget.name}` : `Set Login — ${loginTarget.name}`}
+          onClose={closeLogin}
+        >
           <div className="space-y-4">
-            <Field label="Full Name">
-              <input className={inputCls} value={tForm.name} onChange={e => setTForm(f => ({ ...f, name: e.target.value }))} placeholder="Teacher's name" />
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100 mb-2">
+              {loginTarget.image ? (
+                <img src={loginTarget.image} alt={loginTarget.name} className="w-10 h-10 rounded-full object-cover border border-slate-200" />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-[#7C3AED]/10 flex items-center justify-center text-[#7C3AED] font-bold text-sm">{loginTarget.name.charAt(0)}</div>
+              )}
+              <div>
+                <p className="font-semibold text-[#0a1128] text-sm">{loginTarget.name}</p>
+                <p className="text-xs text-slate-400">{loginTarget.title} · {loginTarget.department}</p>
+              </div>
+            </div>
+
+            <Field label="Login Email">
+              <input
+                type="email"
+                className={inputCls}
+                value={loginForm.email}
+                onChange={e => setLoginForm(f => ({ ...f, email: e.target.value }))}
+                placeholder="e.g. teacher@ric.edu.pk"
+              />
             </Field>
-            <Field label="Email (login)">
-              <input type="email" className={inputCls} value={tForm.email} onChange={e => setTForm(f => ({ ...f, email: e.target.value }))} placeholder="teacher@ric.edu.pk" />
-            </Field>
-            <Field label={tModal === "edit" ? "New Password (leave blank to keep)" : "Password *"}>
+
+            <Field label={loginTarget.user ? "New Password (leave blank to keep current)" : "Password *"}>
               <div className="relative flex items-center">
                 <input
                   type={showPwd ? "text" : "password"}
                   className={`${inputCls} pr-10`}
-                  value={tForm.password}
-                  onChange={e => setTForm(f => ({ ...f, password: e.target.value }))}
-                  placeholder={tModal === "edit" ? "Leave blank to keep existing" : "Min 6 characters"}
+                  value={loginForm.password}
+                  onChange={e => setLoginForm(f => ({ ...f, password: e.target.value }))}
+                  placeholder={loginTarget.user ? "Leave blank to keep current password" : "Min 6 characters"}
                 />
                 <button type="button" onClick={() => setShowPwd(v => !v)} className="absolute right-3 text-slate-400 hover:text-slate-600">
                   {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </Field>
-            {tModal === "add" && unlinkedFaculty.length > 0 && (
-              <Field label="Link to Faculty Member (optional)">
-                <select className={inputCls} value={tForm.facultyMemberId} onChange={e => setTForm(f => ({ ...f, facultyMemberId: e.target.value }))}>
-                  <option value="">— No link —</option>
-                  {unlinkedFaculty.map(f => <option key={f.id} value={f.id}>{f.name} ({f.department})</option>)}
-                </select>
-              </Field>
-            )}
-            <p className="text-xs text-slate-400">Share these credentials with the teacher so they can sign in at <strong>/teacher</strong>.</p>
-            <button onClick={saveTeacher} disabled={tSaving} className="w-full py-3 rounded-xl bg-[#7C3AED] text-white font-semibold flex items-center justify-center gap-2 hover:bg-[#7C3AED]/90 transition-colors disabled:opacity-60">
-              {tSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : tModal === "add" ? "Create Account" : "Update Credentials"}
+
+            {loginError && <p className="text-sm text-red-500">{loginError}</p>}
+
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-700">
+              <strong>How to share:</strong> Give {loginTarget.name} these credentials and tell them to sign in at <strong>/teacher</strong> on the website.
+            </div>
+
+            <button
+              onClick={saveLogin}
+              disabled={loginSaving}
+              className="w-full py-3 rounded-xl bg-[#7C3AED] text-white font-semibold flex items-center justify-center gap-2 hover:bg-[#7C3AED]/90 transition-colors disabled:opacity-60"
+            >
+              {loginSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : loginTarget.user ? "Update Credentials" : "Create Teacher Login"}
             </button>
           </div>
         </Modal>
@@ -1435,9 +1441,19 @@ function TasksTab() {
             <Field label="Description"><textarea className={`${inputCls} min-h-[70px]`} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="What should the teacher do?" /></Field>
             <Field label="Assign To *">
               <select className={inputCls} value={form.teacherId} onChange={e => setForm(f => ({ ...f, teacherId: e.target.value }))}>
-                <option value="">Select teacher</option>
-                {teachers.map(t => <option key={t.id} value={t.id}>{t.name ?? t.email} {t.facultyProfile ? `(${t.facultyProfile.department})` : ""}</option>)}
+                <option value="">{teachers.length === 0 ? "⚠ No teacher accounts yet" : "Select a teacher…"}</option>
+                {teachers.map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.facultyProfile?.name ?? t.name ?? t.email}
+                    {t.facultyProfile ? ` — ${t.facultyProfile.department}` : ` (${t.email})`}
+                  </option>
+                ))}
               </select>
+              {teachers.length === 0 && (
+                <p className="text-xs text-amber-600 mt-1">
+                  Go to <strong>Faculty</strong> tab → click <strong>Set Login</strong> on a faculty member first.
+                </p>
+              )}
             </Field>
             <div className="grid grid-cols-2 gap-4">
               <Field label="Deadline"><input type="date" className={inputCls} value={form.deadline} onChange={e => setForm(f => ({ ...f, deadline: e.target.value }))} /></Field>

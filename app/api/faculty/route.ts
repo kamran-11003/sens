@@ -5,6 +5,9 @@ import { auth } from "@/auth"
 export async function GET() {
   const faculty = await prisma.facultyMember.findMany({
     orderBy: { displayOrder: "asc" },
+    include: {
+      user: { select: { id: true, email: true, name: true } },
+    },
   })
   return NextResponse.json(faculty)
 }
