@@ -2,20 +2,30 @@
 
 import { motion } from "framer-motion"
 import { ArrowRight } from "lucide-react"
+import dynamic from "next/dynamic"
 import { HeroScene } from "@/components/hero-scene"
+
+// Lazy-load the GLB viewer (heavy three.js + large models) only on the client.
+const ModelViewer = dynamic(
+  () => import("@/components/model-viewer").then((mod) => mod.ModelViewer),
+  { ssr: false }
+)
 
 interface HeroSectionProps {
   title?: string
   highlightedText?: string
   subtitle?: string
   showButtons?: boolean
+  /** Which 3D content to show behind the hero. Defaults to the procedural scene. */
+  heroModel?: "default" | "students" | "teacher"
 }
 
-export function HeroSection({ 
-  title = "Shaping", 
-  highlightedText = "Future Leaders", 
+export function HeroSection({
+  title = "Shaping",
+  highlightedText = "Future Leaders",
   subtitle = "Experience world-class education in a futuristic campus designed for innovation, creativity, and structural excellence.",
   showButtons = true,
+  heroModel = "default",
 }: HeroSectionProps) {
   return (
     <section id="hero" className="relative w-full min-h-screen flex items-center overflow-hidden" style={{ paddingTop: "80px", backgroundColor: "#0a1128" }}>
@@ -39,17 +49,34 @@ export function HeroSection({
       />
 
       {/* 3D Canvas Background — sits on top of background image */}
-      <div className="absolute inset-0 z-[2]" style={{ pointerEvents: "auto" }}>
-        <HeroScene />
-      </div>
+      {heroModel === "default" ? (
+        <div className="absolute inset-0 z-[2]" style={{ pointerEvents: "auto" }}>
+          <HeroScene />
+        </div>
+      ) : heroModel === "students" ? (
+        <ModelViewer
+          className="absolute top-24 bottom-0 right-0 w-[65%] md:w-[50%] z-[2]"
+          models={[
+            { src: "/malestudent.glb", position: [-1.3, 0, 0], scale: 1.7 },
+            { src: "/femalestudentmodel.glb", position: [1.3, 0, 0], scale: 1.7 },
+          ]}
+          cameraPosition={[0, 0, 7.5]}
+        />
+      ) : (
+        <ModelViewer
+          className="absolute top-24 bottom-0 right-0 w-[65%] md:w-[50%] z-[2]"
+          models={[{ src: "/teacher-3d-model.glb", position: [0, 0, 0], scale: 2.3 }]}
+          cameraPosition={[0, 0, 6]}
+        />
+      )}
       
       {/* Content — left-aligned like react-frontend */}
       <div className="relative z-10 max-w-[1200px] mx-auto px-8 w-full" style={{ pointerEvents: "none" }}>
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          style={{ pointerEvents: "auto" }}
+          style={{ pointerEvents: "none" }}
         >
           {/* Badge */}
           <motion.span 
@@ -98,8 +125,9 @@ export function HeroSection({
           </motion.p>
 
           {/* Buttons */}
-          {showButtons && <motion.div 
+          {showButtons && <motion.div
             className="flex flex-col sm:flex-row gap-4"
+            style={{ pointerEvents: "auto" }}
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.8 }}

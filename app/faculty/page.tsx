@@ -13,11 +13,12 @@ export default function FacultyPage() {
       <Navigation />
       
       {/* Hero Section - Customized for Faculty */}
-      <HeroSection 
-        title="Our Expert" 
-        highlightedText="Faculty" 
+      <HeroSection
+        title="Our Expert"
+        highlightedText="Faculty"
         subtitle="Learn from world-class educators and industry experts who are dedicated to shaping the next generation of global leaders."
         showButtons={false}
+        heroModel="teacher"
       />
       
       {/* Faculty Section */}

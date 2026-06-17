@@ -45,10 +45,16 @@ export function Navigation() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 no-underline">
             <motion.div
-              whileHover={{ scale: 1.1, rotate: 5 }}
+              whileHover={{ scale: 1.1 }}
               transition={{ type: "spring", stiffness: 400 }}
             >
-              <Image src="/ric-logo.png" alt="RIC Logo" width={36} height={36} className="object-contain" />
+              <motion.div
+                style={{ transformPerspective: 600 }}
+                animate={{ rotateY: 360 }}
+                transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
+              >
+                <Image src="/riphahdaska-logo.png" alt="Riphah International College Logo" width={36} height={36} className="object-contain" />
+              </motion.div>
             </motion.div>
             <span className="text-[1.5rem] font-bold text-white font-[var(--font-poppins)] hidden sm:block">
               Riphah International College

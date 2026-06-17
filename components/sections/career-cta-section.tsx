@@ -3,7 +3,13 @@
 import { motion } from "framer-motion"
 import { ArrowRight, Briefcase, GraduationCap, Sparkles } from "lucide-react"
 import Link from "next/link"
-import Image from "next/image"
+import dynamic from "next/dynamic"
+
+// Lazy-load the GLB viewer (heavy three.js + large model) only on the client.
+const ModelViewer = dynamic(
+  () => import("@/components/model-viewer").then((mod) => mod.ModelViewer),
+  { ssr: false }
+)
 
 export function CareerCTASection() {
   return (
@@ -87,7 +93,7 @@ export function CareerCTASection() {
             </div>
 
             <div className="flex flex-col items-center lg:items-end gap-6">
-              {/* Teacher illustration */}
+              {/* Teacher 3D model — drag to rotate 360° */}
               <motion.div
                 className="relative"
                 initial={{ opacity: 0, y: 20 }}
@@ -95,13 +101,10 @@ export function CareerCTASection() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.7, delay: 0.4 }}
               >
-                <Image
-                  src="/teacher-character.webp"
-                  alt="Faculty member"
-                  width={280}
-                  height={320}
-                  className="object-contain drop-shadow-[0_20px_40px_rgba(245,176,65,0.25)]"
-                  priority={false}
+                <ModelViewer
+                  className="w-full max-w-[440px] h-[520px] drop-shadow-[0_20px_40px_rgba(245,176,65,0.25)]"
+                  models={[{ src: "/teacher-3d-model.glb", position: [0, 0, 0], scale: 1.8 }]}
+                  cameraPosition={[0, 0, 4.2]}
                 />
               </motion.div>
 
