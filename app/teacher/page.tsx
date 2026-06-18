@@ -70,7 +70,7 @@ export default function TeacherLoginPage() {
         transition={{ duration: 0.8, ease: [0.175, 0.885, 0.32, 1.275] }}
         style={{ pointerEvents: formVisible ? "auto" : "none" }}
       >
-        <div className="backdrop-blur-2xl bg-[rgba(21,34,67,0.65)] border border-[rgba(124,58,237,0.3)] rounded-[20px] p-10 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.1)]">
+        <div className="backdrop-blur-2xl bg-[rgba(21,34,67,0.65)] border border-[rgba(124,58,237,0.3)] rounded-[20px] p-6 sm:p-10 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.1)]">
           {/* Header */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-11 h-11 bg-linear-to-br from-[#7C3AED] to-[#1E3A8A] rounded-xl mb-3">

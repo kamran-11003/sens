@@ -89,7 +89,7 @@ function EventModal({ event, onClose }: { event: Event | null; onClose: () => vo
             </div>
           </div>
           <div className="p-6 space-y-4">
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div className="flex items-center gap-2 text-slate-600">
                 <Calendar className="w-4 h-4" style={{ color }} />
                 {dateObj.toLocaleDateString("en-PK", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}

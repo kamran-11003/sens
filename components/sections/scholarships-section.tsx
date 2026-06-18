@@ -184,22 +184,22 @@ export function ScholarshipsSection() {
                     : "hover:border-blue-100 hover:bg-slate-50"
                 }`}
               >
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 sm:gap-4">
                   <div
-                    className={`w-12 h-12 rounded-xl bg-linear-to-br ${scholarship.color} flex items-center justify-center text-white`}
+                    className={`w-12 h-12 rounded-xl bg-linear-to-br ${scholarship.color} flex items-center justify-center text-white shrink-0`}
                   >
                     {scholarship.icon}
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-[#0a1128]">{scholarship.name}</h3>
                     <p className="text-sm text-slate-500">{scholarship.description}</p>
                   </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold gradient-text">{scholarship.amount}</div>
+                  <div className="text-right shrink-0">
+                    <div className="text-xl sm:text-2xl font-bold gradient-text">{scholarship.amount}</div>
                     <div className="text-xs text-slate-400">Tuition Waiver</div>
                   </div>
                   <ChevronRight
-                    className={`w-5 h-5 transition-transform ${
+                    className={`w-5 h-5 shrink-0 hidden sm:block transition-transform ${
                       selectedScholarship.id === scholarship.id ? "rotate-90 text-[#F59E0B]" : "text-slate-300"
                     }`}
                   />
@@ -215,7 +215,7 @@ export function ScholarshipsSection() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="bg-white rounded-3xl p-8 sticky top-24 shadow-xl border border-blue-100"
+              className="bg-white rounded-3xl p-6 sm:p-8 lg:sticky lg:top-24 shadow-xl border border-blue-100"
             >
               <div
                 className={`w-16 h-16 rounded-2xl bg-linear-to-br ${selectedScholarship.color} flex items-center justify-center text-white mb-6`}
@@ -324,7 +324,7 @@ export function ScholarshipsSection() {
                   </motion.div>
                 ) : (
                   <form onSubmit={handleSubmit} className="space-y-5">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <label className="text-xs font-semibold text-slate-600">First Name *</label>
                         <input

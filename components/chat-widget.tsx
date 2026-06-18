@@ -297,7 +297,7 @@ export function ChatWidget() {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            className="fixed bottom-24 right-6 w-[350px] sm:w-[400px] z-50"
+            className="fixed bottom-24 right-4 sm:right-6 w-[calc(100vw-2rem)] sm:w-[400px] z-50"
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -305,7 +305,7 @@ export function ChatWidget() {
           >
             <div
               className="bg-white rounded-3xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col"
-              style={{ maxHeight: "600px" }}
+              style={{ maxHeight: "min(600px, calc(100dvh - 7rem))" }}
             >
               {/* Header */}
               <div className="bg-gradient-to-r from-[#1E3A8A] to-[#7C3AED] p-4 flex-shrink-0">

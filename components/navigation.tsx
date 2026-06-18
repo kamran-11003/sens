@@ -41,7 +41,7 @@ export function Navigation() {
         animate={{ y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
       >
-        <nav className="max-w-full mx-auto px-12 h-full flex items-center justify-between">
+        <nav className="max-w-full mx-auto px-4 sm:px-6 lg:px-12 h-full flex items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 no-underline">
             <motion.div
@@ -56,7 +56,7 @@ export function Navigation() {
                 <Image src="/riphahdaska-logo.png" alt="Riphah International College Logo" width={36} height={36} className="object-contain" />
               </motion.div>
             </motion.div>
-            <span className="text-[1.5rem] font-bold text-white font-[var(--font-poppins)] hidden sm:block">
+            <span className="text-base md:text-lg lg:text-[1.5rem] font-bold text-white font-[var(--font-poppins)] hidden sm:block">
               Riphah International College
             </span>
           </Link>

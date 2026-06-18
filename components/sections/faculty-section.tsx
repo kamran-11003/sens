@@ -356,8 +356,8 @@ export function FacultySection() {
                   {formError && (
                     <div className="p-3 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm">{formError}</div>
                   )}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="col-span-2 space-y-1.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="sm:col-span-2 space-y-1.5">
                       <label className="text-sm font-semibold text-slate-700">Full Name *</label>
                       <input required value={formData.name} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))}
                         className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:border-[#1E3A8A] outline-none text-sm transition-colors"
@@ -375,7 +375,7 @@ export function FacultySection() {
                         className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:border-[#1E3A8A] outline-none text-sm transition-colors"
                         placeholder="+92 300 0000000" />
                     </div>
-                    <div className="col-span-2 space-y-1.5">
+                    <div className="sm:col-span-2 space-y-1.5">
                       <label className="text-sm font-semibold text-slate-700">Subject / Department *</label>
                       <input required value={formData.subject} onChange={e => setFormData(p => ({ ...p, subject: e.target.value }))}
                         className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:border-[#1E3A8A] outline-none text-sm transition-colors"
@@ -393,7 +393,7 @@ export function FacultySection() {
                         className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:border-[#1E3A8A] outline-none text-sm transition-colors"
                         placeholder="e.g. PhD, MS, MBA" />
                     </div>
-                    <div className="col-span-2 space-y-1.5">
+                    <div className="sm:col-span-2 space-y-1.5">
                       <label className="text-sm font-semibold text-slate-700">Additional Message</label>
                       <textarea rows={3} value={formData.message} onChange={e => setFormData(p => ({ ...p, message: e.target.value }))}
                         className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:border-[#1E3A8A] outline-none text-sm transition-colors resize-none"

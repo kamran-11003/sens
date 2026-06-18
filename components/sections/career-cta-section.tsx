@@ -16,7 +16,7 @@ export function CareerCTASection() {
     <section className="py-20 relative overflow-hidden">
       <div className="container mx-auto px-6">
         <motion.div 
-          className="relative rounded-[3rem] overflow-hidden bg-[#0a1128] p-12 md:p-20 text-white shadow-2xl"
+          className="relative rounded-3xl sm:rounded-[3rem] overflow-hidden bg-[#0a1128] p-8 sm:p-12 md:p-20 text-white shadow-2xl"
           initial={{ opacity: 0, y: 50 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}

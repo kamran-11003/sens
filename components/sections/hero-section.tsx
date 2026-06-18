@@ -55,7 +55,7 @@ export function HeroSection({
         </div>
       ) : heroModel === "students" ? (
         <ModelViewer
-          className="absolute top-24 bottom-0 right-0 w-[65%] md:w-[50%] z-[2]"
+          className="hidden sm:block absolute top-24 bottom-0 right-0 w-[55%] md:w-[50%] z-[2]"
           models={[
             { src: "/malestudent.glb", position: [-1.3, 0, 0], scale: 1.7 },
             { src: "/femalestudentmodel.glb", position: [1.3, 0, 0], scale: 1.7 },
@@ -64,14 +64,14 @@ export function HeroSection({
         />
       ) : (
         <ModelViewer
-          className="absolute top-24 bottom-0 right-0 w-[65%] md:w-[50%] z-[2]"
+          className="hidden sm:block absolute top-24 bottom-0 right-0 w-[55%] md:w-[50%] z-[2]"
           models={[{ src: "/teacher-3d-model.glb", position: [0, 0, 0], scale: 2.3 }]}
           cameraPosition={[0, 0, 6]}
         />
       )}
       
       {/* Content — left-aligned like react-frontend */}
-      <div className="relative z-10 max-w-[1200px] mx-auto px-8 w-full" style={{ pointerEvents: "none" }}>
+      <div className="relative z-10 max-w-[1200px] mx-auto px-6 sm:px-8 w-full" style={{ pointerEvents: "none" }}>
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -95,7 +95,7 @@ export function HeroSection({
 
           {/* Heading — gold gradient matching react-frontend */}
           <motion.h1 
-            className="font-[var(--font-poppins)] text-[4.5rem] md:text-[5.5rem] lg:text-[6rem] font-extrabold leading-[1.1] text-white mb-6 max-w-[900px]"
+            className="font-[var(--font-poppins)] text-[2.5rem] sm:text-[3.5rem] md:text-[5.5rem] lg:text-[6rem] font-extrabold leading-[1.1] text-white mb-6 max-w-[900px]"
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
@@ -116,7 +116,7 @@ export function HeroSection({
 
           {/* Subtitle */}
           <motion.p 
-            className="text-[1.2rem] text-[#94a3b8] max-w-[600px] mb-12 leading-relaxed"
+            className="text-base sm:text-lg md:text-[1.2rem] text-[#94a3b8] max-w-[600px] mb-12 leading-relaxed"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.6 }}
@@ -134,7 +134,7 @@ export function HeroSection({
           >
             <motion.a
               href="/admissions"
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-lg bg-[#f5b041] text-[#0a1128] font-[var(--font-poppins)] text-[1.1rem] font-bold no-underline cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-lg bg-[#f5b041] text-[#0a1128] font-[var(--font-poppins)] text-[1.1rem] font-bold no-underline cursor-pointer"
               whileHover={{ 
                 scale: 1.05,
                 backgroundColor: "#f39c12",
@@ -148,7 +148,7 @@ export function HeroSection({
             
             <motion.a
               href="#tour"
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-lg text-white font-[var(--font-poppins)] text-[1.1rem] font-semibold no-underline"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-lg text-white font-[var(--font-poppins)] text-[1.1rem] font-semibold no-underline"
               style={{
                 background: "rgba(255, 255, 255, 0.05)",
                 border: "1px solid rgba(255, 255, 255, 0.1)",
