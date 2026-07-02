@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Menu, X } from "lucide-react"
+import { Menu, X, LogIn, ChevronDown } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 
@@ -76,7 +76,29 @@ export function Navigation() {
               </motion.a>
             ))}
 
-
+            {/* Login dropdown */}
+            <motion.div
+              className="relative group"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: navItems.length * 0.1 }}
+            >
+              <button className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[#f5b041]/60 text-[#f5b041] text-[0.9rem] font-semibold hover:bg-[#f5b041]/10 transition-colors">
+                <LogIn className="w-4 h-4" /> Login
+                <ChevronDown className="w-3.5 h-3.5 transition-transform group-hover:rotate-180" />
+              </button>
+              {/* pt-2 keeps the menu reachable while moving the cursor down */}
+              <div className="absolute right-0 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                <div className="w-48 rounded-xl overflow-hidden bg-[#152243] border border-[#f5b041]/20 shadow-xl">
+                  <Link href="/admin" className="block px-4 py-3 text-sm text-[#e2e8f0] hover:bg-white/5 hover:text-[#f5b041] no-underline transition-colors">
+                    Admin Portal
+                  </Link>
+                  <Link href="/teacher" className="block px-4 py-3 text-sm text-[#e2e8f0] hover:bg-white/5 hover:text-[#f5b041] no-underline border-t border-white/10 transition-colors">
+                    Teacher Portal
+                  </Link>
+                </div>
+              </div>
+            </motion.div>
           </div>
 
           {/* Mobile Menu Button */}
@@ -141,6 +163,22 @@ export function Navigation() {
                   >
                     Apply Now
                   </Link>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Link
+                      href="/admin"
+                      className="flex items-center justify-center gap-2 py-3 rounded-lg bg-[#f5b041] text-[#0a1128] text-center font-semibold no-underline"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <LogIn className="w-4 h-4" /> Admin
+                    </Link>
+                    <Link
+                      href="/teacher"
+                      className="flex items-center justify-center gap-2 py-3 rounded-lg bg-white/10 border border-white/15 text-white text-center font-semibold no-underline"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <LogIn className="w-4 h-4" /> Teacher
+                    </Link>
+                  </div>
                 </div>
               </div>
             </motion.nav>

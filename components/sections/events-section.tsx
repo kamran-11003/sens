@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { X, Calendar, MapPin, Clock, Users, Loader2 } from "lucide-react"
+import { X, Calendar, MapPin, Clock, Users, Loader2, Check, Send } from "lucide-react"
 
 interface Event {
   id: string
@@ -67,15 +67,58 @@ function EventCard({ event, onClick }: { event: Event; onClick: () => void }) {
 }
 
 function EventModal({ event, onClose }: { event: Event | null; onClose: () => void }) {
+  const [form, setForm] = useState({ name: "", phone: "", email: "", note: "" })
+  const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+  const [error, setError] = useState("")
+
+  // Reset the form whenever a different event is opened
+  useEffect(() => {
+    setForm({ name: "", phone: "", email: "", note: "" })
+    setSubmitted(false)
+    setError("")
+    setSubmitting(false)
+  }, [event?.id])
+
   if (!event) return null
   const color = typeColor(event.type)
   const dateObj = new Date(event.date)
+
+  const register = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError("")
+    if (!form.name.trim() || !form.phone.trim()) {
+      setError("Please enter your name and phone number.")
+      return
+    }
+    setSubmitting(true)
+    try {
+      const res = await fetch("/api/event-registrations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventId: event.id, ...form }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setError(data.error || "Failed to register. Please try again.")
+        setSubmitting(false)
+        return
+      }
+      setSubmitted(true)
+    } catch {
+      setError("Network error. Please try again.")
+    }
+    setSubmitting(false)
+  }
+
+  const inputCls = "w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:border-[#1E3A8A] outline-none text-sm transition-colors"
+
   return (
     <AnimatePresence>
       <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
         <motion.div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
         <motion.div
-          className="relative w-full max-w-lg bg-white rounded-3xl overflow-hidden shadow-2xl"
+          className="relative w-full max-w-lg bg-white rounded-3xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto"
           initial={{ scale: 0.92, opacity: 0, y: 40 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.92, opacity: 0, y: 40 }}
           transition={{ type: "spring", damping: 28 }}
         >
@@ -109,9 +152,35 @@ function EventModal({ event, onClose }: { event: Event | null; onClose: () => vo
               )}
             </div>
             <p className="text-slate-600 leading-relaxed text-sm">{event.description}</p>
-            <button onClick={onClose} className="w-full py-3 rounded-xl text-white font-semibold text-sm" style={{ backgroundColor: color }}>
-              Close
-            </button>
+
+            {/* Registration */}
+            <div className="pt-2 border-t border-slate-100">
+              {submitted ? (
+                <div className="text-center py-4">
+                  <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
+                    <Check className="w-7 h-7 text-green-600" />
+                  </div>
+                  <h3 className="text-lg font-bold text-[#0a1128] mb-1">You&apos;re registered!</h3>
+                  <p className="text-slate-500 text-sm mb-5">Thanks for signing up for <span className="font-semibold">{event.title}</span>. We&apos;ll be in touch with the details.</p>
+                  <button onClick={onClose} className="w-full py-3 rounded-xl text-white font-semibold text-sm" style={{ backgroundColor: color }}>
+                    Done
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={register} className="space-y-3">
+                  <h3 className="font-bold text-[#0a1128]">Register for this event</h3>
+                  {error && <div className="p-3 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm">{error}</div>}
+                  <input required value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className={inputCls} placeholder="Full name *" />
+                  <input required value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} className={inputCls} placeholder="Phone number *" />
+                  <input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} className={inputCls} placeholder="Email (optional)" />
+                  <textarea rows={2} value={form.note} onChange={e => setForm(p => ({ ...p, note: e.target.value }))} className={`${inputCls} resize-none`} placeholder="Anything we should know? (optional)" />
+                  <button type="submit" disabled={submitting} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-white font-semibold text-sm disabled:opacity-60 transition-opacity" style={{ backgroundColor: color }}>
+                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    {submitting ? "Registering..." : "Register Now"}
+                  </button>
+                </form>
+              )}
+            </div>
           </div>
         </motion.div>
       </motion.div>

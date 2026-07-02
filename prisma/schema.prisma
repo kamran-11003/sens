@@ -157,18 +157,30 @@ model FacultyMember {
 }
 
 model Event {
-  id          String   @id @default(cuid())
-  title       String
-  type        String
-  date        String
-  time        String
-  location    String
-  description String
-  attendees   String
-  image       String   @default("")
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String              @id @default(cuid())
+  title         String
+  type          String
+  date          String
+  time          String
+  location      String
+  description   String
+  attendees     String
+  image         String              @default("")
+  active        Boolean             @default(true)
+  registrations EventRegistration[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+}
+
+model EventRegistration {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name      String
+  phone     String
+  email     String   @default("")
+  note      String   @default("")
+  createdAt DateTime @default(now())
 }
 
 model ContactSubmission {

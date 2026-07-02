@@ -7,7 +7,7 @@ import {
   LayoutDashboard, BookOpen, FileText, Users, Calendar, MessageSquare,
   Plus, Pencil, Trash2, Download, X, Check, Loader2, LogOut, Bot, GraduationCap, Tag, Menu,
   Award, Settings, ClipboardList, Key, Eye, EyeOff, Send, Square, CheckSquare,
-  Paperclip, Image, Video, Link2,
+  Paperclip, Image, Video, Link2, Ticket,
 } from "lucide-react"
 import { signOut } from "next-auth/react"
 
@@ -48,6 +48,10 @@ interface TeachingApplication {
 interface ProgramCategory {
   id: string; slug: string; label: string; active: boolean
 }
+interface EventRegistration {
+  id: string; name: string; phone: string; email: string; note: string; createdAt: string
+  event: { title: string; type: string; date: string } | null
+}
 interface ScholarshipApplication {
   id: string; scholarshipName: string; firstName: string; lastName: string
   phone: string; documentUrl: string; documentType: string; status: string; createdAt: string
@@ -76,6 +80,7 @@ const TABS = [
   { id: "faculty",      label: "Faculty",      icon: Users },
   { id: "tasks",        label: "LMS Tasks",    icon: ClipboardList },
   { id: "events",       label: "Events",       icon: Calendar },
+  { id: "registrations", label: "Event Signups", icon: Ticket },
   { id: "contact",      label: "Contact",      icon: MessageSquare },
   { id: "teaching",     label: "Teaching Jobs", icon: GraduationCap },
   { id: "bot",          label: "FAQ Bot",      icon: Bot },
@@ -701,6 +706,64 @@ function EventsTab() {
             </button>
           </div>
         </Modal>
+      )}
+    </div>
+  )
+}
+
+function RegistrationsTab() {
+  const [regs, setRegs] = useState<EventRegistration[]>([])
+  const [loading, setLoading] = useState(true)
+  const [eventFilter, setEventFilter] = useState("all")
+
+  const load = useCallback(() => {
+    setLoading(true)
+    fetch("/api/event-registrations").then(r => r.json()).then(d => { setRegs(Array.isArray(d) ? d : []); setLoading(false) }).catch(() => setLoading(false))
+  }, [])
+  useEffect(() => { load() }, [load])
+
+  const eventTitles = Array.from(new Set(regs.map(r => r.event?.title).filter(Boolean))) as string[]
+  const filtered = eventFilter === "all" ? regs : regs.filter(r => r.event?.title === eventFilter)
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-[#0a1128]">Event Signups</h2>
+          <p className="text-sm text-slate-500 mt-0.5">{filtered.length} registration{filtered.length === 1 ? "" : "s"}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <select value={eventFilter} onChange={e => setEventFilter(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white max-w-[220px]">
+            <option value="all">All events</option>
+            {eventTitles.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <a href="/api/event-registrations/export" target="_blank" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#10B981] text-white text-sm font-semibold hover:bg-[#10B981]/90 transition-colors">
+            <Download className="w-4 h-4" /> Export CSV
+          </a>
+        </div>
+      </div>
+      {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-[#1E3A8A]" /></div> : filtered.length === 0 ? (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 py-16 text-center text-slate-400 text-sm">No registrations yet.</div>
+      ) : (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden overflow-x-auto">
+          <table className="w-full text-sm min-w-[760px]">
+            <thead className="bg-slate-50 border-b border-slate-100">
+              <tr>{["Name","Phone","Email","Event","Note","Date"].map(h => <th key={h} className="text-left py-3 px-4 text-slate-500 font-medium">{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {filtered.map(r => (
+                <tr key={r.id} className="border-b border-slate-50 hover:bg-slate-50 align-top">
+                  <td className="py-3 px-4 font-medium text-[#0a1128]">{r.name}</td>
+                  <td className="py-3 px-4 text-slate-500 whitespace-nowrap">{r.phone}</td>
+                  <td className="py-3 px-4 text-slate-500">{r.email || "—"}</td>
+                  <td className="py-3 px-4 text-slate-500">{r.event?.title ?? "—"}</td>
+                  <td className="py-3 px-4 text-slate-500 max-w-[220px]">{r.note || "—"}</td>
+                  <td className="py-3 px-4 text-slate-500 whitespace-nowrap">{new Date(r.createdAt).toLocaleDateString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   )
@@ -1836,6 +1899,7 @@ export default function AdminDashboard() {
           {activeTab === "faculty"      && <FacultyTab />}
           {activeTab === "tasks"        && <TasksTab />}
           {activeTab === "events"       && <EventsTab />}
+          {activeTab === "registrations" && <RegistrationsTab />}
           {activeTab === "contact"      && <ContactTab />}
           {activeTab === "teaching"     && <TeachingTab />}
           {activeTab === "bot"          && <BotTab />}
